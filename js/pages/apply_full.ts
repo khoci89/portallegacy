@@ -83,9 +83,11 @@ function cekRiwayat() {
   $('wa-loading').classList.remove('hidden');
   $('wa-msg').classList.add('hidden');
 
-  window.callAPI('cekDataPelamar', [wa]).then((res) => {
-    $('wa-loading').classList.add('hidden');
-    if (res && res.found) {
+  window
+    .callAPI('cekDataPelamar', [wa])
+    .then((res) => {
+      $('wa-loading').classList.add('hidden');
+      if (res && res.found) {
       $('wa-msg').classList.remove('hidden');
 
       // Isi data secara elegan jika belum terisi
@@ -176,7 +178,13 @@ function cekRiwayat() {
         warnEl.classList.add('hidden');
       }
     }
-  });
+    })
+    .catch((err) => {
+      // FIX (audit 2026-09-07): dulu tanpa .catch — API gagal membuat spinner
+      // #wa-loading nyangkut selamanya + unhandled rejection di konsol.
+      $('wa-loading').classList.add('hidden');
+      console.warn('[cekRiwayat] gagal:', err && err.message);
+    });
 }
 
 export function handleExtraFile(el, idx) {
@@ -432,13 +440,30 @@ async function uploadFilesDirectly(filesObj, folder) {
   // upload (tidak ada lagi request getUploadUrls / PUT ke Supabase Storage).
   // Cloudinary memberi public_id unik per upload, jadi tidak ada risiko
   // menimpa file lama (dulu CV per loker butuh prefix JOB<code>_CV).
+  // FIX (audit 2026-09-07): Promise.all dulu — 1 file gagal membuang SEMUA
+  // hasil (file yang sudah terupload ikut dibuang, pelamar harus pilih ulang
+  // semua dokumen). Sekarang allSettled: file yang berhasil tetap dipakai,
+  // yang gagal dilempar agar caller bisa memberi tahu dokumen mana yang gagal.
   const uploadPromises = toUpload.map((key) =>
     // @ts-expect-error JS→TS migration
-    uploadToCloudinary(files[key]).then((url) => ({ key, url }))
+    uploadToCloudinary(files[key]).then((url) => ({ key, url })),
   );
-  const results = await Promise.all(uploadPromises);
+  const settled = await Promise.allSettled(uploadPromises);
   const uploadedUrls: Record<string, any> = {};
-  results.forEach((r) => { uploadedUrls[r.key] = r.url; });
+  const failedKeys = settled
+    .map((s, i) => (s.status === 'rejected' ? toUpload[i] : null))
+    .filter(Boolean);
+  settled.forEach((s) => {
+    if (s.status === 'fulfilled') uploadedUrls[s.value.key] = s.value.url;
+  });
+  if (failedKeys.length > 0) {
+    const err: any = new Error(
+      'Upload gagal untuk: ' + failedKeys.join(', ') + '. Coba kirim ulang.',
+    );
+    err.uploadedUrls = uploadedUrls;
+    err.failedKeys = failedKeys;
+    throw err;
+  }
   return uploadedUrls;
 }
 

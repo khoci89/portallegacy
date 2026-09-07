@@ -1,9 +1,11 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import {
   hasBackend,
   normalizeWa,
   pick,
   supabaseJson,
+  supabaseKey,
   supabaseUpsert,
   supabaseUrl,
   toText,
@@ -17,7 +19,7 @@ import { findMasterByWa } from './actions-master';
 import { cacheClear } from './cache';
 import { bucket, storageRequest, publicUrl, hapusJenisVarian, uploadBase64 } from './storage';
 import { syncFormMailDariUpload } from './actions-mail';
-import { nextCandidateId } from './candidate-helpers';
+import { findCandidateByWa, nextCandidateId } from './candidate-helpers';
 import * as fcm from './fcm-server';
 import { notifyAdmins } from './fcm-helpers';
 // actions-upload.js — upload & apply (apply-full.html, admin pemberkasan,
@@ -28,6 +30,14 @@ import { notifyAdmins } from './fcm-helpers';
 // Menggantikan dynamic import('./actions-ingest.ts') agar heavy deps
 // (pdf-parse, xlsx, mammoth) TIDAK dibundle ke actions-upload.ts.
 // ---------------------------------------------------------------------------
+// Secret server-to-server untuk /ingest: hash dari Supabase service key.
+// ingest.js menerima panggilan internal via header ini TANPA sessionToken
+// (submitApply adalah endpoint publik, jadi tidak punya sesi untuk diteruskan).
+// Dihitung ulang di dua sisi dari env yang sama — tidak perlu env baru.
+function ingestSecretHash(): string {
+  return crypto.createHash('sha256').update(supabaseKey() || '').digest('hex');
+}
+
 function fireIngest(payload: unknown[], sessionToken?: string): void {
   const baseUrl = process.env.URL || process.env.DEPLOY_PRIME_URL || '';
   const target = baseUrl ? `${baseUrl}/.netlify/functions/ingest` : '/.netlify/functions/ingest';
@@ -35,7 +45,7 @@ function fireIngest(payload: unknown[], sessionToken?: string): void {
   // Fire-and-forget: jangan await, jangan block upload response.
   fetch(target, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-ingest-secret': ingestSecretHash() },
     body,
   })
     .then((r) => r.json())
@@ -86,9 +96,29 @@ function pickPrefill(data) {
 // ---------------------------------------------------------------------------
 async function handleGetUploadUrls(payload, sessionToken) {
   if (!hasBackend()) return { success: false, error: 'Backend belum dikonfigurasi.' };
+  // SECURITY (audit 2026-09-07): endpoint dulu TANPA sesi + folder dari payload
+  // arbitrer — siapa pun bisa minta signed URL ke folder mana pun dan memicu
+  // hapusJenisVarian (DELETE massal) di folder korban. Sekarang: sesi wajib;
+  // kandidat dikunci ke folder own-nya (dari DB); '..' ditolak.
+  const t = session.verifyToken(sessionToken);
+  if (!t || t.kind === 'refresh') {
+    return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+  }
   const body = (payload && payload[0]) || payload || {};
   const files = Array.isArray(body.files) ? body.files : [];
-  const folder = String(body.folder || 'misc').replace(/^\/+|\/+$/g, '');
+  let folder = String(body.folder || 'misc').replace(/^\/+|\/+$/g, '');
+  if (!folder || folder.includes('..')) return { success: false, error: 'Folder tidak valid.' };
+  if (t.role === 'kandidat') {
+    const waSess = normalizeWa(String(t.wa || ''));
+    let nama = '';
+    try {
+      const row = await findCandidateByWa(waSess);
+      nama = String((row && (row.nama_lengkap || row.nama)) || '').trim().toUpperCase();
+    } catch {
+      /* DB gagal — fallback ke WA sebagai nama folder */
+    }
+    folder = 'master/' + (nama.replace(/[^A-Z0-9_-]/g, '_') || waSess);
+  }
   if (files.length === 0) return { success: false, error: 'Tidak ada file untuk diupload.' };
   const urls: Record<string, any> = {};
   try {
@@ -157,9 +187,15 @@ async function findFormByWaJob(wa, code) {
 // cekDataPelamar([wa]) → { found, nama, gender, usia, tb, bb, pasPhoto,
 // jftUrl, sswUrl, applications } — applications = SEMUA lamaran WA (multi-apply),
 // dipakai apply-full.html untuk menampilkan peringatan kalau sudah LULUS job lain.
-async function handleCekDataPelamar(payload) {
+async function handleCekDataPelamar(payload, sessionToken) {
   const wa = String((payload && payload[0]) || '');
   if (!wa) return { found: false, applications: [] };
+  // SECURITY (audit 2026-09-07): email + data penuh hanya untuk pemilik WA /
+  // admin. Tanpa sesi, respons tetap mengirim prefill biodata & status lamaran
+  // (dipakai apply-full), tapi TANPA email (PII). URL dokumen tetap dikirim
+  // karena dibutuhkan badge "File Tersimpan" di apply — itu capability URL
+  // yang tidak bisa ditebak, bukan rahasia terstruktur.
+  const fullData = isOwnerOrAdmin(sessionToken, wa);
   try {
     // Jalur cepat: tarik hanya lamaran WA ini, bukan scan 500 baris inbox.
     let rows = await findFormsByWa(wa);
@@ -197,7 +233,7 @@ async function handleCekDataPelamar(payload) {
             photoUrl: cPhoto && cPhoto !== '-' ? cPhoto : '-',
             jftUrl: cJft && cJft !== '-' ? cJft : '-',
             sswUrl: cSsw && cSsw !== '-' ? cSsw : '-',
-            email: toText(pick(candRow, ['email'])),
+            ...(fullData ? { email: toText(pick(candRow, ['email'])) } : {}),
             applications: apps,
           };
         }
@@ -283,7 +319,7 @@ async function handleCekDataPelamar(payload) {
       photoUrl: finalPhoto,
       jftUrl: finalJft,
       sswUrl: finalSsw,
-      email: finalEmail,
+      ...(fullData ? { email: finalEmail } : {}),
       applications: apps,
     };
   } catch (e) {
@@ -311,7 +347,6 @@ async function handleIsJobRequiresCv(payload) {
 
 // submitApply([payload]) → simpan/update lamaran di database_asj_form.
 async function handleSubmitApply(payload) {
-  cacheClear(); // lamaran baru masuk → inbox/kandidat berubah
   const d = (payload && payload[0]) || {};
   const wa = normalizeWa(String(d.wa || ''));
   const code = String(d.job || '').trim();
@@ -344,6 +379,9 @@ async function handleSubmitApply(payload) {
         message: 'Berkas belum lengkap. Harap upload: ' + [...missingCore, ...missing].join(', '),
       };
     }
+    // FIX #17 (cacheClear SETELAH validasi): request sampah anonim tidak lagi
+    // memaksa buang cache → full scan berikutnya.
+    cacheClear(); // lamaran baru masuk → inbox/kandidat berubah
 
     // D. kategory otomatis dari bidang loker (kolom kategori/bidang/sektor)
     // kalau form tidak membawa ?bidang= — supaya mail tidak semua tampil
@@ -754,7 +792,6 @@ async function handleSimpanKandidatDanUpload(payload, sessionToken) {
 // DAN kandidat (upload berkas sendiri dari dashboard).
 // ---------------------------------------------------------------------------
 async function handleSimpanBerkasTahapan(payload, sessionToken) {
-  cacheClear(); // berkas tahapan berubah → buang cache dedupe
   const d = (payload && payload[0]) || {};
   const t = session.verifyToken(sessionToken);
   if (!t || (t.role !== 'admin' && t.role !== 'kandidat')) {
@@ -777,25 +814,15 @@ async function handleSimpanBerkasTahapan(payload, sessionToken) {
   // didukung sebagai fallback untuk klien yang belum dimigrasi.
   const directUrl = String(d.fileUrl || (f && f.url) || '').trim();
   if (!wa || (!directUrl && !f.data)) return { success: false, error: 'Data tidak lengkap.' };
+  // FIX #17: cacheClear SETELAH sesi & input tervalidasi (dulu baris pertama —
+  // request sampah anonim memaksa buang cache → full scan berikutnya).
+  cacheClear(); // berkas tahapan berubah → buang cache dedupe
   try {
-    const nama = String(d.nama || 'KANDIDAT')
-      .trim()
-      .toUpperCase();
-    const folder = 'master/' + nama.replace(/[^A-Z0-9_-]/g, '_');
-    const ext =
-      String(f.name || 'file')
-        .split('.')
-        .pop() || 'jpg';
-
-    // CV per loker: nama file memakai kode job utama kandidat (konvensi sama
-    // dengan apply-full: JOB<code>_CV) supaya CV loker lama & baru tersimpan
-    // berdampingan di folder master/<NAMA> dan tidak saling menimpa.
-    let fileName = (jenis || 'DOKUMEN') + '.' + ext;
-    const isCv = jenis === 'CV' || jenis === 'CV_REVISI';
+    // Jalur cepat: cari baris kandidat via query server-side (filter WA).
+    // Lookup dipindah ke atas — nama folder untuk sesi kandidat WAJIB dari DB.
     let candRow = null;
     const want = normalizeWa(wa);
     try {
-      // Jalur cepat: cari baris kandidat via query server-side (filter WA).
       candRow = await findCandidateByWaFiltered(wa);
       if (candRow === undefined) {
         const candFound = await findCandidates();
@@ -806,6 +833,29 @@ async function handleSimpanBerkasTahapan(payload, sessionToken) {
     } catch (e) {
       /* lookup kandidat non-fatal */
     }
+    // SECURITY (audit 2026-09-07): sesi kandidat → nama folder diambil dari DB,
+    // BUKAN payload. `d.nama` bisa dipalsukan ke nama korban sehingga
+    // hapusJenisVarian/upload menimpa dokumen di folder korban.
+    const namaFromDb = candRow
+      ? String(pick(candRow, ['nama_lengkap', 'nama']) || '').trim()
+      : '';
+    const nama = (
+      t.role === 'kandidat' ? namaFromDb : String(d.nama || namaFromDb || 'KANDIDAT')
+    )
+      .trim()
+      .toUpperCase();
+    const safeNama = nama || 'KANDIDAT';
+    const folder = 'master/' + safeNama.replace(/[^A-Z0-9_-]/g, '_');
+    const ext =
+      String(f.name || 'file')
+        .split('.')
+        .pop() || 'jpg';
+
+    // CV per loker: nama file memakai kode job utama kandidat (konvensi sama
+    // dengan apply-full: JOB<code>_CV) supaya CV loker lama & baru tersimpan
+    // berdampingan di folder master/<NAMA> dan tidak saling menimpa.
+    let fileName = (jenis || 'DOKUMEN') + '.' + ext;
+    const isCv = jenis === 'CV' || jenis === 'CV_REVISI';
     if (isCv && candRow) {
       const jobCode = String(pick(candRow, ['id_loker_pilihan', 'id_loker']) || '')
         .trim()
@@ -827,7 +877,7 @@ async function handleSimpanBerkasTahapan(payload, sessionToken) {
     try {
       await syncFormMailDariUpload(
         wa,
-        nama,
+        safeNama,
         jenis,
         url,
         candRow ? String(pick(candRow, ['id_loker_pilihan', 'id_loker']) || '') : '',
@@ -863,7 +913,7 @@ async function handleSimpanBerkasTahapan(payload, sessionToken) {
           query: { on_conflict: 'wa,tahap' },
           body: {
             wa: wa,
-            nama_lengkap: nama,
+            nama_lengkap: safeNama,
             tahap: 1,
             updated_at: new Date().toISOString(),
             [map.pemberkasan]: url,
@@ -885,7 +935,7 @@ async function handleSimpanBerkasTahapan(payload, sessionToken) {
     try {
       notifyAdmins(
         'Berkas Baru!',
-        `${nama || 'Kandidat'} mengunggah ${jenis || 'dokumen'}.`,
+        `${safeNama} mengunggah ${jenis || 'dokumen'}.`,
         '/admin.html',
       );
     } catch (_) {}
@@ -901,8 +951,13 @@ async function handleSimpanBerkasTahapan(payload, sessionToken) {
 async function handleSimpanRevisiKandidat(payload, sessionToken) {
   const guard = requireRole(sessionToken, 'kandidat');
   if (guard.error) return guard.error;
-  cacheClear(); // revisi kandidat → buang cache dedupe
   const wa = String((payload && payload[0]) || '');
+  // SECURITY (audit 2026-09-07): WA payload harus sama dengan WA sesi —
+  // dulu kandidat mana pun bisa menimpa file_cv kandidat lain via payload.
+  if (normalizeWa(wa) !== normalizeWa(String(guard.token.wa || ''))) {
+    return { success: false, error: 'Nomor WA tidak sesuai sesi.' };
+  }
+  cacheClear(); // revisi kandidat → buang cache dedupe
   const f = (payload && payload[1]) || {};
   // Jalur Cloudinary (2026-08-17): URL string dari browser dipakai langsung;
   // base64 (jalur lama) tetap didukung sebagai fallback.

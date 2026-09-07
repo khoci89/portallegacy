@@ -128,13 +128,17 @@ async function syncCandidateDariForm(f, status) {
       usia: String(f.usia || ''),
       tb: String(f.tb || ''),
       bb: String(f.bb || ''),
-      pas_photo: f.pas_photo || '',
-      jft: f.jft || '',
-      ssw: f.ssw || '',
-      file_cv: f.file_cv || '',
       status_kandidat: 'LULUS',
       updated_at: now,
     };
+    // FIX (audit 2026-09-07): dokumen hanya di-set jika baris mail MEMBAWA
+    // nilainya. Dulu `f.xxx || ''` menimpa dokumen kandidat dengan string
+    // kosong — multi-apply: lamaran job B tanpa CV yang di-approve menghapus
+    // file_cv hasil upload di job A.
+    if (f.pas_photo) base.pas_photo = f.pas_photo;
+    if (f.jft) base.jft = f.jft;
+    if (f.ssw) base.ssw = f.ssw;
+    if (f.file_cv) base.file_cv = f.file_cv;
     if (codeJob) base.id_loker_pilihan = codeJob;
     if (row && row.id !== undefined) {
       for (const k of Object.keys(base)) if (base[k] === undefined) delete base[k];

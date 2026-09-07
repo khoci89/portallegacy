@@ -18,14 +18,20 @@ async function handleUpdateCatatanKandidat(payload, sessionToken) {
   // FIX #17: cacheClear SETELAH validasi berhasil.
   cacheClear();
   try {
-    await supabaseJson('PATCH', 'database_candidate', {
+    // return=representation supaya tahu PATCH benar-benar mengenai baris —
+    // PostgREST tetap 200 untuk query yang cocok 0 baris (id stale), dulu
+    // dilaporkan sukses padahal tidak ada perubahan.
+    const updated = await supabaseJson('PATCH', 'database_candidate', {
       query: { id_kandidat: 'eq.' + id },
       body: {
         catatan_internal: intNote || '',
         catatan_external: extNote || '',
       },
-      headers: { Prefer: 'return=minimal' },
+      headers: { Prefer: 'return=representation' },
     });
+    if (!Array.isArray(updated) || updated.length === 0) {
+      return { success: false, error: 'Kandidat tidak ditemukan (id: ' + id + ').' };
+    }
     return { success: true };
   } catch (e) {
     return { success: false, error: 'Gagal simpan catatan: ' + e.message };

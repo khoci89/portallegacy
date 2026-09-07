@@ -328,6 +328,11 @@ export function resetUploadStatus() {
     'edit-k-st-cv',
     'edit-k-st-jft',
     'edit-k-st-ssw',
+    // Span status 4 input ijazah Super Edit (FIX audit 2026-09-07).
+    'edit-k-st-ijazah-sd',
+    'edit-k-st-ijazah-smp',
+    'edit-k-st-ijazah-sma',
+    'edit-k-st-univ',
   ].forEach(function (id) {
     var el = document.getElementById(id);
     if (el) el.innerHTML = '';
@@ -532,6 +537,13 @@ export function cekSemuaUkuranFile(lainPrefix) {
     window.cekUkuranFile(
       document.getElementById(lainPrefix === 'edit-k' ? 'edit-k-file-ssw' : lainPrefix + '-ssw'),
     ),
+    // FIX (audit 2026-09-07): 4 input ijazah Super Edit dulu lolos guard
+    // ukuran (file 100 MB pun lolos ke Cloudinary). Null-safe: id hanya ada
+    // di modal edit-k; di modal 'k' cekUkuranFile(null) return ''.
+    window.cekUkuranFile(document.getElementById('edit-k-ijazah-sd')),
+    window.cekUkuranFile(document.getElementById('edit-k-ijazah-smp')),
+    window.cekUkuranFile(document.getElementById('edit-k-ijazah-sma')),
+    window.cekUkuranFile(document.getElementById('edit-k-univ')),
   ];
   collectLainRows(lainPrefix).forEach(function (r) {
     errs.push(window.cekUkuranFile(r.input));
@@ -554,6 +566,11 @@ export function cekSemuaEkstensiFile(lainPrefix) {
     window.cekEkstensiFile(
       document.getElementById(lainPrefix === 'edit-k' ? 'edit-k-file-ssw' : lainPrefix + '-ssw'),
     ),
+    // FIX (audit 2026-09-07): sertakan 4 input ijazah Super Edit (null-safe).
+    window.cekEkstensiFile(document.getElementById('edit-k-ijazah-sd')),
+    window.cekEkstensiFile(document.getElementById('edit-k-ijazah-smp')),
+    window.cekEkstensiFile(document.getElementById('edit-k-ijazah-sma')),
+    window.cekEkstensiFile(document.getElementById('edit-k-univ')),
   ];
   collectLainRows(lainPrefix).forEach(function (r) {
     errs.push(window.cekEkstensiFile(r.input));
@@ -679,20 +696,67 @@ export async function prosesUploadKandidat() {
       // pemberkasan — admin boleh upload langsung (bypass approval).
       // Bisa >1 dokumen sekaligus: tiap baris yang punya file di-upload.
       const lainRows = collectLainRows('k');
+      let uploadGagal = false;
       for (const r of lainRows) {
         const jenisLabel = String(r.jenis || 'DOKUMEN');
         setUploadStatus(r.stId, jenisLabel, 'uploading');
-        const lainUrl = await window.uploadToCloudinary(r.input.files[0]).catch(() => null);
+        // FIX (audit 2026-09-07): pola sama dengan Super Edit — dulu
+        // .catch(() => null) menelan kegagalan Cloudinary (status stuck
+        // "uploading" + toast sukses palsu). Sekarang: fail + toast + modal
+        // tetap terbuka bila ada yang gagal.
+        let lainUrl = null;
+        try {
+          lainUrl = await window.uploadToCloudinary(r.input.files[0]);
+        } catch (eUp) {
+          console.warn('[Input Kandidat] Upload Cloudinary gagal:', jenisLabel, eUp && eUp.message);
+        }
         if (lainUrl) {
           try {
             const lr = await window.callAPI('simpanBerkasTahapan', [
               { wa: wa, nama: nama, jenisBerkas: r.jenis, fileUrl: lainUrl },
             ]);
-            setUploadStatus(r.stId, jenisLabel, lr && lr.success ? 'ok' : 'fail');
+            if (lr && lr.success) {
+              setUploadStatus(r.stId, jenisLabel, 'ok');
+            } else {
+              setUploadStatus(r.stId, jenisLabel, 'fail');
+              uploadGagal = true;
+              window.showToast(
+                window.tr('ui.toast_error_prefix') +
+                  'Simpan ' +
+                  jenisLabel +
+                  ' gagal. Coba simpan lagi.',
+                'error',
+              );
+            }
           } catch (e) {
             setUploadStatus(r.stId, jenisLabel, 'fail');
+            uploadGagal = true;
+            window.showToast(
+              window.tr('ui.toast_error_prefix') +
+                'Simpan ' +
+                jenisLabel +
+                ' gagal. Coba simpan lagi.',
+              'error',
+            );
           }
+        } else {
+          setUploadStatus(r.stId, jenisLabel, 'fail');
+          uploadGagal = true;
+          window.showToast(
+            window.tr('ui.toast_error_prefix') +
+              'Upload ' +
+              jenisLabel +
+              ' gagal. Periksa koneksi/ukuran file, lalu coba simpan lagi.',
+            'error',
+          );
         }
+      }
+      // Data kandidat utama SUDAH tersimpan (upsert anti-duplikat), tapi bila
+      // ada dokumen lain yang gagal: refresh data, biarkan modal terbuka, dan
+      // JANGAN tampilkan toast sukses.
+      if (uploadGagal) {
+        window.refreshDataDinamis('pelamar');
+        return;
       }
       window.showToast(window.tr('ui.toast_cand_saved') + ringkas + '.' + passInfo, 'success');
       // Tampilkan centang beberapa saat supaya admin langsung melihat hasil, lalu tutup
@@ -773,7 +837,20 @@ export function bukaSuperEditKandidat(idKan) {
   document.getElementById('edit-k-jft').value = c.jftText !== '-' ? c.jftText || '' : '';
   document.getElementById('edit-k-ssw').value = c.sswText !== '-' ? c.sswText || '' : '';
 
-  ['edit-k-photo', 'edit-k-cv', 'edit-k-file-jft', 'edit-k-file-ssw'].forEach((id) => {
+  [
+    'edit-k-photo',
+    'edit-k-cv',
+    'edit-k-file-jft',
+    'edit-k-file-ssw',
+    // FIX (audit 2026-09-07): 4 input ijazah dulu tidak pernah di-reset antar
+    // kandidat — file yang dipilih untuk kandidat A bisa ikut ter-upload ke
+    // kandidat B saat admin buka Super Edit berikutnya (kontaminasi lintas
+    // kandidat).
+    'edit-k-ijazah-sd',
+    'edit-k-ijazah-smp',
+    'edit-k-ijazah-sma',
+    'edit-k-univ',
+  ].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -829,6 +906,7 @@ export async function simpanSuperEditKandidat() {
       // admin boleh lampirkan berkas pemberkasan tambahan saat edit.
       // Bisa >1 dokumen sekaligus: tiap baris yang punya file di-upload.
       const eLainRows = collectLainRows('edit-k');
+      let uploadGagal = false;
 
       // Tambahkan file utama (photo, cv, jft, ssw) ke daftar upload jika dipilih
       const mPhoto = document.getElementById('edit-k-photo');
@@ -862,7 +940,16 @@ export async function simpanSuperEditKandidat() {
       for (const er of eLainRows) {
         const eJenisLabel = String(er.jenis || 'DOKUMEN');
         setUploadStatus(er.stId, eJenisLabel, 'uploading');
-        const eLainUrl = await window.uploadToCloudinary(er.input.files[0]).catch(() => null);
+        // Jangan telan error Cloudinary: dulu .catch(() => null) membuat
+        // kegagalan upload diam-diam dilewati (status stuck "uploading",
+        // modal tetap tertutup dengan toast sukses). Sekarang: status fail
+        // + toast error, dan modal TIDAK ditutup supaya admin bisa coba lagi.
+        let eLainUrl = null;
+        try {
+          eLainUrl = await window.uploadToCloudinary(er.input.files[0]);
+        } catch (eUp) {
+          console.warn('[Edit Super] Upload Cloudinary gagal:', eJenisLabel, eUp && eUp.message);
+        }
         if (eLainUrl) {
           try {
             // Nama kandidat untuk folder storage diambil dari data
@@ -875,11 +962,50 @@ export async function simpanSuperEditKandidat() {
             const lr2 = await window.callAPI('simpanBerkasTahapan', [
               { wa: payload.wa, nama: eNama, jenisBerkas: er.jenis, fileUrl: eLainUrl },
             ]);
-            setUploadStatus(er.stId, eJenisLabel, lr2 && lr2.success ? 'ok' : 'fail');
+            if (lr2 && lr2.success) {
+              setUploadStatus(er.stId, eJenisLabel, 'ok');
+            } else {
+              // FIX (audit 2026-09-07): simpanBerkasTahapan gagal setelah file
+              // terbayar ke Cloudinary — harus dihitung gagal juga, dulu modal
+              // tetap ditutup + toast sukses padahal dokumen TIDAK tercatat DB.
+              setUploadStatus(er.stId, eJenisLabel, 'fail');
+              uploadGagal = true;
+              window.showToast(
+                window.tr('ui.toast_error_prefix') +
+                  'Simpan ' +
+                  eJenisLabel +
+                  ' gagal. Coba simpan lagi.',
+                'error',
+              );
+            }
           } catch (e2) {
             setUploadStatus(er.stId, eJenisLabel, 'fail');
+            uploadGagal = true;
+            window.showToast(
+              window.tr('ui.toast_error_prefix') +
+                'Simpan ' +
+                eJenisLabel +
+                ' gagal. Coba simpan lagi.',
+              'error',
+            );
           }
+        } else {
+          setUploadStatus(er.stId, eJenisLabel, 'fail');
+          window.showToast(
+            window.tr('ui.toast_error_prefix') +
+              'Upload ' +
+              eJenisLabel +
+              ' gagal. Periksa koneksi/ukuran file, lalu coba simpan lagi.',
+            'error',
+          );
+          uploadGagal = true;
         }
+      }
+      if (uploadGagal) {
+        // Ada file yang gagal terkirim — biarkan modal terbuka (status per
+        // baris sudah menunjukkan mana yang gagal) dan jangan tampil sukses.
+        document.getElementById('global-loader').style.display = 'none';
+        return;
       }
       document.getElementById('modal-edit-kandidat').classList.add('hidden');
       window.showToast(window.tr('ui.toast_sync3_success'), 'success');

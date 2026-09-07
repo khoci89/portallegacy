@@ -1,10 +1,13 @@
+import crypto from 'crypto';
 import { env } from './env';
 import {
   normalizeWa,
   normalizeGender,
   pick,
   supabaseJson,
+  supabaseKey,
   supabaseUpsert,
+  supabaseUrl,
   toText,
 } from './db/client';
 import { requireRole } from './actions-auth';
@@ -132,7 +135,41 @@ async function geminiStructuredExtract(text: string): Promise<GeminiExtractedDat
 // File download
 // ---------------------------------------------------------------------------
 
+// Secret server-to-server (dipakai fireIngest di actions-upload.ts): hash
+// SHA-256 dari Supabase service key — dihitung ulang di kedua sisi dari env
+// yang sama, tanpa env baru.
+function ingestSecretHash(): string {
+  return crypto.createHash('sha256').update(supabaseKey() || '').digest('hex');
+}
+
+// SECURITY (audit 2026-09-07): SSRF guard — dulu fetch URL apa pun yang lolos
+// prefix http(s), termasuk 169.254.169.254 / host internal. Sekarang hanya
+// host file kandidat yang diizinkan: Supabase Storage proyek + Cloudinary.
+function isAllowedFileHost(rawUrl: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return false;
+  const host = u.hostname.toLowerCase();
+  // IP literal → selalu tolak (metadata service / private network).
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(':')) return false;
+  if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) return false;
+  const sbHost = String(supabaseUrl() || '')
+    .replace(/^https?:\/\//, '')
+    .replace(/\/.*$/, '')
+    .toLowerCase();
+  if (sbHost && host === sbHost) return true;
+  if (host === 'cloudinary.com' || host.endsWith('.cloudinary.com')) return true;
+  return false;
+}
+
 async function downloadFile(url: string): Promise<{ buffer: Buffer; contentType: string }> {
+  if (!isAllowedFileHost(url)) {
+    throw new Error('Host file tidak diizinkan (hanya Supabase Storage / Cloudinary proyek ini).');
+  }
   const res = await fetch(url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
   if (!res.ok) throw new Error('Gagal download file: HTTP ' + res.status);
   const contentType = res.headers.get('content-type') || '';
@@ -217,10 +254,17 @@ function cleanText(raw: string): string {
 // Main handler: processUploadDoc
 // ---------------------------------------------------------------------------
 
-export async function handleProcessUploadDoc(payload: unknown[], sessionToken?: string) {
-  // Guard: admin atau kandidat dengan sesi valid
+export async function handleProcessUploadDoc(
+  payload: unknown[],
+  sessionToken?: string,
+  internalSecret?: string,
+) {
+  // Guard: admin/kandidat dengan sesi valid, ATAU panggilan internal
+  // server-to-server dari function lain (header x-ingest-secret — dipakai
+  // fireIngest submitApply yang berjalan tanpa sesi user).
   const t = (await import('./session.ts')).verifyToken(sessionToken);
-  if (!t || (t.role !== 'admin' && t.role !== 'kandidat')) {
+  const internalOk = !!internalSecret && internalSecret === ingestSecretHash();
+  if (!internalOk && (!t || (t.role !== 'admin' && t.role !== 'kandidat'))) {
     return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
   }
 

@@ -356,6 +356,11 @@
   <!-- Fase 3.5 L6: js/pages/master_full.js = entry ESM — meng-import core sendiri
        lewat bridge.js (i18n + api-client), jadi tag core terpisah tidak perlu lagi -->
 <!--SCRIPTS_SHARED_START-->
+<!-- Wadah toast — WAJIB ada di setiap halaman. showToast() di js/init/util.ts
+     diam saja (tanpa pesan) kalau elemen ini tidak ada, jadi semua halaman
+     standalone (ai_form, apply-full, master-full, share, siswa-baru) butuh
+     elemen ini; index.html & admin.html sudah punya sendiri. -->
+<div id="toast-container" aria-live="polite" class="fixed top-5 right-5 z-[9999] flex flex-col gap-3 pointer-events-none"></div>
 <script type="importmap">
 {
   "imports": {

@@ -312,7 +312,12 @@ for (const page of ALL_HTML) {
 // ANTI-CACHE: cek apakah SW serve versi lama. Kalau iya, force reload.
 // Delay 2s supaya SW sempat register+cache dulu → mencegah loop.
 // sessionStorage guard: cuma fire 1x per deploy.
-setTimeout(function(){var E="app-${bundleHash}";try{if(sessionStorage.getItem('asj_ac_v')===E)return;if(!navigator.serviceWorker||!navigator.serviceWorker.controller)return;caches.match("/assets/"+E+".js").then(function(r){if(!r){sessionStorage.setItem('asj_ac_v',E);console.log("[anti-cache] Stale SW, force reload...");navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(reg){reg.unregister()});location.reload(true)})}}).catch(function(){})}catch(e){}},2000);
+// FIX (audit 2026-09-07): reload paksa di tengah operasi penting MEMBATALKAN
+// upload/simpan diam-diam (file terkirim ke Cloudinary tapi data tidak
+// tersimpan — persis keluhan "upload kok gak berhasil" setelah tiap deploy).
+// Sekarang: kalau global-loader sedang tampil (upload/simpan berjalan),
+// tunggu sampai idle (maks 60x1s) sebelum reload.
+setTimeout(function(){var E="app-${bundleHash}";try{if(sessionStorage.getItem('asj_ac_v')===E)return;if(!navigator.serviceWorker||!navigator.serviceWorker.controller)return;caches.match("/assets/"+E+".js").then(function(r){if(!r){var tries=0;(function whenIdle(){var ld=document.getElementById('global-loader');var busy=ld&&ld.style.display&&ld.style.display!=='none';if(busy&&tries<60){tries++;setTimeout(whenIdle,1000);return}sessionStorage.setItem('asj_ac_v',E);console.log("[anti-cache] Stale SW, force reload...");navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(reg){reg.unregister()});location.reload(true)})})()}}).catch(function(){})}catch(e){}},2000);
 </script>
 <!-- /ANTI-CACHE -->`;
   // Ganti anti-cache yang sudah ada (idempotent) atau sisipkan sebelum bundle script

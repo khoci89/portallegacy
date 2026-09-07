@@ -68,6 +68,10 @@ export async function uploadToCloudinary(file, opts, maxRetries = 3) {
             await new Promise((r) => setTimeout(r, backoffMs));
             continue;
           }
+          // Percobaan terakhir 5xx: lempar di sini — dulu jatuh ke res.json()
+          // di bawah pada body yang sudah dikonsumsi sehingga pesannya
+          // menyesatkan ("Body has already been consumed").
+          throw lastError;
         }
       }
 
@@ -79,9 +83,17 @@ export async function uploadToCloudinary(file, opts, maxRetries = 3) {
     } catch (e) {
       if (timeoutId) clearTimeout(timeoutId);
 
+      // FIX (audit 2026-09-07): dulu kondisi retry hanya cocok dengan string
+      // 'Gagal terhubung' yang TIDAK PERNAH di-throw fetch — error jaringan
+      // asli adalah TypeError 'Failed to fetch'/'Load failed'/'NetworkError'.
+      // Akibatnya network error selalu fatal tanpa retry.
+      const eMsg = String((e && e.message) || '');
+      const isNetworkErr =
+        (e instanceof TypeError) ||
+        /failed to fetch|load failed|networkerror|network error/i.test(eMsg);
       // AbortError (timeout) atau network error → retry dengan backoff
-      if (e.name === 'AbortError' || e.message.includes('Gagal terhubung')) {
-        lastError = new Error('Upload Cloudinary timeout/network: ' + e.message);
+      if (e.name === 'AbortError' || isNetworkErr) {
+        lastError = new Error('Upload Cloudinary timeout/network: ' + eMsg);
         if (attempt < maxRetries - 1) {
           const backoffMs = 1000 * Math.pow(2, attempt); // 1s, 2s, 4s
           await new Promise((r) => setTimeout(r, backoffMs));

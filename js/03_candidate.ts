@@ -63,6 +63,14 @@ export function bukaModalCvMini() {
 }
 
 export async function prosesSimpanCvMini() {
+  // FIX (audit 2026-09-07): guard ukuran foto — dulu foto >5 MB dikompres/
+  // dikirim base64 apa adanya (+30% overhead) dan ditolak 413 Netlify dengan
+  // error generik. Tolak SEBELUM proses dengan toast yang jelas.
+  const umErr = cekUkuranFile(document.getElementById('um-photo'));
+  if (umErr) {
+    window.showToast(umErr, 'error');
+    return;
+  }
   let btn = document.getElementById('btn-submit-cv-mini');
   btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> ' + window.tr('ui.saving') + '';
   btn.disabled = true;
@@ -678,29 +686,23 @@ export async function prosesUploadPemberkasan(tahap) {
     // @ts-expect-error JS→TS migration
     window.tr('ui.uploading_files').replace('{n}', filesToUpload.length);
 
-  // Upload tiap berkas ke Cloudinary secara SEKUENSIAL dengan retry
-  // (sebelumnya paralel via allSettled — timeout/bagian rusak tanpa retry).
-  const MAX_RETRIES = 3;
+  // Upload tiap berkas ke Cloudinary secara SEKUENSIAL. Retry ditangani di
+  // DALAM uploadToCloudinary (3x + exponential backoff) — loop retry luar
+  // menggandakannya (hingga 9x/file, termasuk mengulang 4xx fatal yang pasti
+  // gagal) sehingga global-loader bisa menggantung belasan menit.
   const results = [];
   for (const f of filesToUpload) {
     let url = null;
     let lastErr = null;
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        url = await window.uploadToCloudinary(f.fileObj);
-        break; // sukses
-      } catch (e) {
-        lastErr = e;
-        if (attempt < MAX_RETRIES) {
-          // Exponential backoff: 1s, 2s, 4s
-          await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
-        }
-      }
+    try {
+      url = await window.uploadToCloudinary(f.fileObj);
+    } catch (e) {
+      lastErr = e;
     }
     if (!url) {
-      // Upload gagal setelah 3x retry — skip file ini, jangan kirim undefined ke backend
+      // Upload gagal — skip file ini, jangan kirim undefined ke backend
       console.warn('[upload] Gagal upload ' + f.jenisBerkas + ': ' + (lastErr && lastErr.message));
-      results.push({ status: 'rejected', reason: lastErr });
+      results.push({ status: 'rejected', reason: lastErr, jenis: f.jenisBerkas });
       continue;
     }
     try {
@@ -711,12 +713,15 @@ export async function prosesUploadPemberkasan(tahap) {
         fileUrl: url,
       };
       const res = await window.callAPI('simpanBerkasTahapan', [payload]);
-      results.push({ status: 'fulfilled', value: !!(res && res.success) });
+      results.push({ status: 'fulfilled', value: !!(res && res.success), jenis: f.jenisBerkas });
     } catch (e) {
-      results.push({ status: 'rejected', reason: e });
+      results.push({ status: 'rejected', reason: e, jenis: f.jenisBerkas });
     }
   }
   const successCount = results.filter((r) => r.status === 'fulfilled' && r.value).length;
+  const gagalList = results
+    .filter((r) => !(r.status === 'fulfilled' && r.value))
+    .map((r) => r.jenis);
 
   document.getElementById('global-loader').style.display = 'none';
   btn.innerHTML =
@@ -725,13 +730,36 @@ export async function prosesUploadPemberkasan(tahap) {
       : '<i class="fas fa-cloud-upload-alt mr-2"></i> ' + window.tr('ui.upload_berkas_tahap_2');
   btn.disabled = false;
 
-  window.showToast(
-    // @ts-expect-error JS→TS migration
-    window.tr('ui.toast_uploaded_n').replace('{n}', successCount) +
-      window.tr('ui.toast_docs_exclaim'),
-    'success',
-  );
-  document.getElementById('modal-pemberkasan').classList.add('hidden');
+  // FIX (audit 2026-09-07): dulu toast SUKSES selalu tampil meski 0 file
+  // berhasil, lalu modal ditutup — user yakin dokumen tersimpan padahal tidak.
+  // Sekarang: sukses → tutup modal; sebagian/semua gagal → toast error dengan
+  // daftar dokumen gagal dan modal DIBIARKAN TERBUKA untuk dicoba lagi.
+  if (gagalList.length === 0) {
+    window.showToast(
+      // @ts-expect-error JS→TS migration
+      window.tr('ui.toast_uploaded_n').replace('{n}', successCount) +
+        window.tr('ui.toast_docs_exclaim'),
+      'success',
+    );
+    document.getElementById('modal-pemberkasan').classList.add('hidden');
+  } else if (successCount > 0) {
+    window.showToast(
+      // @ts-expect-error JS→TS migration
+      window.tr('ui.toast_uploaded_n').replace('{n}', successCount) +
+        ' · Gagal: ' +
+        gagalList.join(', ') +
+        '. Coba upload ulang dokumen tersebut.',
+      'error',
+    );
+  } else {
+    window.showToast(
+      window.tr('ui.toast_error_prefix') +
+        'Semua upload gagal (' +
+        gagalList.join(', ') +
+        '). Periksa koneksi/ukuran file lalu coba lagi.',
+      'error',
+    );
+  }
   window.refreshDataDinamis();
 }
 

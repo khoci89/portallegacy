@@ -321,7 +321,9 @@ export function handleDocUpload(event, type) {
   var statusEl = $('status_' + type);
   statusEl.classList.remove('hidden');
   statusEl.innerHTML =
-    '<i class="fas fa-spinner fa-spin text-amber-400"></i> ' + window.tr('ui.uploading_shard');
+    // FIX (audit 2026-09-07): dulu key 'ui.uploading_shard' tidak ada di
+    // locale id/jp — status menampilkan literal path i18n. Pakai key yang ada.
+    '<i class="fas fa-spinner fa-spin text-amber-400"></i> ' + window.tr('ui.uploading_short');
 
   // Downscale scan gambar dulu; pdf & gagal-decode dibiarkan utuh oleh helper.
   downscaleScanImage(file, 800, 0.8, function (hasil) {
