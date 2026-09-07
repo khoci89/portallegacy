@@ -251,4 +251,32 @@ describe('handleProcessAIChat — auto-translate mengisi field JP apa pun format
       '日本で真面目に働き、貯金しながらスキルアップを目指します。',
     );
   });
+
+  it('guard juga menjaga _id di array (keluarga.hubungan_id) saat model memparafrase', async () => {
+    const originalHubungan = 'Ibu kandung';
+    const paraphrasedHubungan = 'Orang tua';
+    vi.mocked(geminiGenerate)
+      .mockResolvedValueOnce({
+        reply: JSON.stringify({
+          reply: 'Selesai, Kak!',
+          data: {
+            keluarga: [{ hubungan_id: paraphrasedHubungan, hubungan_jp: '母' }],
+          },
+        }),
+      })
+      .mockResolvedValueOnce({ reply: '1. 母' });
+
+    const currentData: Record<string, any> = {
+      identitas: { nama_lengkap: 'TEST' },
+      keluarga: [{ hubungan_id: originalHubungan, hubungan_jp: '' }],
+    };
+    const res: any = await handleProcessAIChat(
+      { flow: 'apply', history: [], currentData, lang: 'id' },
+      undefined,
+    );
+    // _id harus dikembalikan ke original (bukan paraphrased)
+    expect(res.data.keluarga[0].hubungan_id).toBe(originalHubungan);
+    // _jp tetap terisi
+    expect(res.data.keluarga[0].hubungan_jp).toBe('母');
+  });
 });

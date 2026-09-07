@@ -311,6 +311,17 @@ async function handleProcessAIChat(payload, sessionToken) {
         const inAi = getNested(aiData, pair.idPath);
         if (inAi !== origId) setNested(aiData, pair.idPath, origId);
       }
+      // Array fields guard: same contract — restore _id for each array row.
+      for (const afp of ARRAY_FIELD_PAIRS) {
+        const arr = Array.isArray(aiData[afp.type]) ? aiData[afp.type] : [];
+        const origArr = Array.isArray(p.currentData[afp.type]) ? p.currentData[afp.type] : [];
+        for (let i = 0; i < arr.length; i++) {
+          if (!arr[i]) continue;
+          const origId = String((origArr[i] && origArr[i][afp.idKey]) || "");
+          const inAi = String(arr[i][afp.idKey] || "");
+          if (inAi && inAi !== origId) arr[i][afp.idKey] = origId;
+        }
+      }
     }
     return { reply, data: aiData || {} };
   } catch (e) {
