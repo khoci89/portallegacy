@@ -15,6 +15,7 @@
 | 2026-09-03 | Buffy    | D13b parse daftar tempelan WA (shared/wa-list.ts) | pending |
 | 2026-09-03 | Buffy    | D13c izinkan nomor internasional (+81/+65) utk undangan grup | pending |
 | 2026-09-03 | Buffy    | D13d tombol Auto-Varian Anti-Ban di modal Undangan Grup | pending |
+| 2026-09-07 | AI Agent | Auto-translate CV AI: single-batch ID→JP + guard _id | pending |
 
 ---
 
@@ -684,6 +685,15 @@
 - [x] Gemini model fallback chain (3 models, 7s timeout) ✅
 - [x] parseJsonLoose defensive (markdown fences + JSON extraction) ✅
 - [x] Error messages user-friendly, server errors logged ✅
+
+### I5. `ai/translate-lines.ts` + Auto-Translate Single-Batch (2026-09-07)
+
+- [x] `translateItemsToJapanese()`: batch terjemahan ID→JP PER BARIS (bukan kontrak JSON objek `{"0":..}` yang dulu dibuang total kalau satu escape rusak — item yang gagal hanya menggugurkan item itu)
+- [x] `handleProcessAIChat` auto-translate: HANYA SATU panggilan Gemini — field yang sudah di-cover balasan JSON model (_jp non-kosong) TIDAK ikut batch, nilai model tidak pernah ditimpa (model-wins)
+- [x] Model balas PROSA: reply diteruskan verbatim + `data` berisi HANYA kolom _jp hasil batch (tanpa _id → tidak ada yang bisa diparafrase)
+- [x] Guard deterministik: _id yang model parafrase/memendek di giliran translate di-restore byte-for-byte dari currentData (khusus turn JSON)
+- [x] `actions-master.ts` `autoTranslateToJp` ikut pakai `translate-lines` (hapus kontrak JSON objek)
+- [x] Test baru: 4 kasus `handleProcessAIChat` (parafrase _id, JSON kosong, prosa, JSON lupa sebagian _jp) — `bun run test` 302/302 pass, `bun run typecheck` bersih
 
 ---
 

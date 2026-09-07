@@ -1,4 +1,5 @@
 import { APPLY_WA_COLS } from './ai/cv';
+import { translateItemsToJapanese } from './ai/translate-lines';
 import { normalizeWa, pick, supabaseJson, supabaseUpsert, toText } from './db/client';
 import { findCandidateByWaFiltered, findCandidates } from './db/candidates';
 import { fetchMasterByWa } from './db/master';
@@ -200,36 +201,20 @@ async function autoTranslateToJp(
     toTranslate.push({ key, text: idText });
   }
   if (toTranslate.length === 0) return {};
-  const NL = String.fromCharCode(10);
-  const items = toTranslate.map((t, i) => i + 1 + '. ' + t.text).join(NL);
-  const prompt =
-    'Terjemahkan Bahasa Indonesia ke Bahasa Jepang untuk CV kerja.' +
-    NL +
-    'Kembalikan JSON: ' +
-    String.fromCharCode(123) +
-    '"0":"jp0","1":"jp1",...' +
-    String.fromCharCode(125) +
-    ' tanpa teks lain.' +
-    NL +
-    NL +
-    items;
+  // Parse toleran per baris (ai/translate-lines): satu item gagal tidak
+  // membuang seluruh batch — kontrak JSON objek lama rawan dibuang total
+  // kalau model mengeluarkan satu escape rusak ("Bad Unicode escape").
+  const result: Record<string, string> = {};
   try {
-    const { geminiGenerate, parseJsonLoose } = await import('./ai/providers.ts');
-    const r = await geminiGenerate(prompt, []);
-    const text = String(r && r.reply ? r.reply : '').trim();
-    if (!text) return {};
-    const parsed = parseJsonLoose(text);
-    if (!parsed || typeof parsed !== 'object') return {};
-    const result: Record<string, string> = {};
+    const jps = await translateItemsToJapanese(toTranslate.map((t) => t.text));
     for (let i = 0; i < toTranslate.length; i++) {
-      const t = String(parsed[String(i)] || '').trim();
+      const t = String(jps[i] || '').trim();
       if (t) result[toTranslate[i].key] = t;
     }
-    return result;
   } catch (e) {
     console.error('[autoTranslate] error:', e && e.message ? e.message : e);
-    return {};
   }
+  return result;
 }
 async function findMasterByWa(wa) {
   const want = normalizeWa(wa);

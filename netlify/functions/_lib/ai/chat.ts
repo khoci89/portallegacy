@@ -2,10 +2,13 @@ import { normalizeWa, pick, supabaseJson } from '../db/client.ts';
 import { requireRole } from '../actions-auth.ts';
 import { buildRingkasData, findMasterByWa, APPLY_WA_COLS } from './cv';
 import { geminiGenerate, parseJsonLoose } from './providers';
+import { translateItemsToJapanese } from './translate-lines';
 
 // ---------------------------------------------------------------------------
 // Auto-translate: isi field _jp yang kosong dari field _id (terjemahan ID→JP).
-// Satu panggilan Gemini untuk semua field sekaligus supaya cepat & hemat kuota.
+// SATU panggilan Gemini per batch, dan hanya untuk field yang _jp-nya masih
+// kosong dan BELUM diisi balasan model (covered) — model-wins, tanpa hasil
+// translate yang dibuang (dulu memicu regresi latensi/panggilan kedua).
 // ---------------------------------------------------------------------------
 const AI_ID_JP_PAIRS: Array<{
   idPath: string[];
@@ -26,10 +29,16 @@ const AI_ID_JP_PAIRS: Array<{
   { idPath: ['wawancara', 'motivasi_ke_jepang'], jpPath: ['wawancara', 'motivasi_ke_jepang_jp'] },
   { idPath: ['wawancara', 'alasan_bidang_id'], jpPath: ['wawancara', 'alasan_bidang_jp'] },
 
-  { idPath: ['wawancara', 'alasan_memilih_bidang'], jpPath: ['wawancara', 'alasan_memilih_bidang_jp'] },
+  {
+    idPath: ['wawancara', 'alasan_memilih_bidang'],
+    jpPath: ['wawancara', 'alasan_memilih_bidang_jp'],
+  },
   { idPath: ['wawancara', 'rencana_pulang_id'], jpPath: ['wawancara', 'rencana_pulang_jp'] },
 
-  { idPath: ['wawancara', 'rencana_setelah_pulang'], jpPath: ['wawancara', 'rencana_setelah_pulang_jp'] },
+  {
+    idPath: ['wawancara', 'rencana_setelah_pulang'],
+    jpPath: ['wawancara', 'rencana_setelah_pulang_jp'],
+  },
   { idPath: ['wawancara', 'keinginan_id'], jpPath: ['wawancara', 'keinginan_jp'] },
   { idPath: ['wawancara', 'tujuan_ke_jepang'], jpPath: ['wawancara', 'tujuan_ke_jepang_jp'] },
   // identitas
@@ -42,7 +51,7 @@ const AI_ID_JP_PAIRS: Array<{
   { idPath: ['kenalan_jepang', 'hubungan_id'], jpPath: ['kenalan_jepang', 'hubungan_jp'] },
   { idPath: ['kenalan_jepang', 'pekerjaan_id'], jpPath: ['kenalan_jepang', 'pekerjaan_jp'] },
   { idPath: ['kenalan_jepang', 'alamat_id'], jpPath: ['kenalan_jepang', 'alamat_jp'] },
-];;
+];
 function getNested(obj: any, path: string[]): string {
   let cur = obj;
   for (const k of path) {
@@ -61,53 +70,62 @@ function setNested(obj: any, path: string[], val: string): void {
   cur[path[path.length - 1]] = val;
 }
 
-async function autoTranslateMissingJp(data: Record<string, any>): Promise<void> {
-  const NL = String.fromCharCode(10);
+async function autoTranslateMissingJp(
+  data: Record<string, any>,
+  covered: Set<string> = new Set(),
+): Promise<string[]> {
   const pairs: Array<{ index: number; idText: string; jpPath: string[] }> = [];
   for (let i = 0; i < AI_ID_JP_PAIRS.length; i++) {
     const pair = AI_ID_JP_PAIRS[i];
     const idVal = getNested(data, pair.idPath).trim();
     const jpVal = getNested(data, pair.jpPath).trim();
-    if (idVal && !jpVal) {
+    if (idVal && !jpVal && !covered.has(pair.jpPath.join('.'))) {
       pairs.push({ index: pairs.length, idText: idVal, jpPath: pair.jpPath });
     }
   }
-  const arrayFieldPairs: Array<{ type: string; idKey: string; jpKey: string }> = [
-    { type: 'pendidikan', idKey: 'sekolah', jpKey: 'sekolah_jp' },
-    { type: 'pendidikan', idKey: 'jurusan_id', jpKey: 'jurusan_jp' },
-    { type: 'pekerjaan', idKey: 'perusahaan', jpKey: 'perusahaan_jp' },
-    { type: 'pekerjaan', idKey: 'jabatan', jpKey: 'jabatan_jp' },
-    { type: 'keluarga', idKey: 'hubungan_id', jpKey: 'hubungan_jp' },
-    { type: 'keluarga', idKey: 'pekerjaan', jpKey: 'pekerjaan_jp' },
-  ];
-  for (const afp of arrayFieldPairs) {
+  for (const afp of ARRAY_FIELD_PAIRS) {
     const arr = Array.isArray(data[afp.type]) ? data[afp.type] : [];
     for (let i = 0; i < arr.length; i++) {
       const idVal = String((arr[i] && arr[i][afp.idKey]) || '').trim();
       const jpVal = String((arr[i] && arr[i][afp.jpKey]) || '').trim();
-      if (idVal && !jpVal) {
-        pairs.push({ index: pairs.length, idText: idVal, jpPath: [afp.type, String(i), afp.jpKey] });
+      if (idVal && !jpVal && !covered.has(afp.type + '.' + i + '.' + afp.jpKey)) {
+        pairs.push({
+          index: pairs.length,
+          idText: idVal,
+          jpPath: [afp.type, String(i), afp.jpKey],
+        });
       }
     }
   }
-  if (pairs.length === 0) return;
-  console.log('[autoTranslate] Translating ' + pairs.length + ' fields: ' + pairs.map(p => p.jpPath.join('.')).join(', '));
-  const lines = pairs.map((p) => p.index + 1 + '. ' + p.idText).join(NL);
-  const prompt = 'Terjemahkan Bahasa Indonesia ke Bahasa Jepang untuk CV kerja.' + NL + 'Kembalikan JSON: ' + String.fromCharCode(123) + '"0":"jp0","1":"jp1",...' + String.fromCharCode(125) + ' tanpa teks lain.' + NL + NL + lines;
-  try {
-    const r = await geminiGenerate(prompt, []);
-    const text = String(r && r.reply ? r.reply : '').trim();
-    if (!text) { console.log('[autoTranslate] Empty response from Gemini'); return; }
-    const parsed = parseJsonLoose(text);
-    if (!parsed || typeof parsed !== 'object') return;
-    for (let i = 0; i < pairs.length; i++) {
-      const jp = String(parsed[String(i)] || '').trim();
-      if (jp) setNested(data, pairs[i].jpPath, jp);
+  if (pairs.length === 0) return [];
+  console.log(
+    '[autoTranslate] Translating ' +
+      pairs.length +
+      ' fields: ' +
+      pairs.map((p) => p.jpPath.join('.')).join(', '),
+  );
+  const translations = await translateItemsToJapanese(pairs.map((p) => p.idText));
+  const filled: string[] = [];
+  for (let i = 0; i < pairs.length; i++) {
+    const jp = String(translations[i] || '').trim();
+    if (jp) {
+      setNested(data, pairs[i].jpPath, jp);
+      filled.push(pairs[i].jpPath.join('.'));
     }
-  } catch (e) {
-    console.error('[autoTranslateMissingJp] error:', e && e.message ? e.message : e);
   }
+  return filled;
 }
+
+// Pasangan field ID/JP untuk baris array (pendidikan/pekerjaan/keluarga).
+// Dipakai autoTranslateMissingJp DAN coverage di handleProcessAIChat.
+const ARRAY_FIELD_PAIRS: Array<{ type: string; idKey: string; jpKey: string }> = [
+  { type: 'pendidikan', idKey: 'sekolah', jpKey: 'sekolah_jp' },
+  { type: 'pendidikan', idKey: 'jurusan_id', jpKey: 'jurusan_jp' },
+  { type: 'pekerjaan', idKey: 'perusahaan', jpKey: 'perusahaan_jp' },
+  { type: 'pekerjaan', idKey: 'jabatan', jpKey: 'jabatan_jp' },
+  { type: 'keluarga', idKey: 'hubungan_id', jpKey: 'hubungan_jp' },
+  { type: 'keluarga', idKey: 'pekerjaan', jpKey: 'pekerjaan_jp' },
+];
 
 // ai/chat.js — domain AI chat & wawancara: Qween Jeklin (chat kandidat master),
 // Jeklin copilot admin, Dede Jeklin (siswa baru), wawancara kerja (mensetsu)
@@ -151,9 +169,11 @@ const AI_FORM_DATA_INSTRUCTION =
   'Contoh: kelebihan_id = \"Disiplin\" (ID), kelebihan_jp = \"基準がある\" (JP). ' +
   'PROMOSI, KEBERHASILAN, KELEBIHAN, KEKURANGAN, HOBI, KEAHLIAN, MOTIVASI, ALASAN BIDANG, RENCANA PULANG: ' +
   'WAJIB isi KEDUANYA (_id DAN _jp) — jangan kosongkan salah satu.\n' +
-  'TERJEMAHAN: Jika kandidat meminta terjemahkan/translate, WAJIB kembalikan JSON dengan SEMUA field _jp terisi dari _id. ' +
-  'Contoh: kelebihan_id = \"Disiplin\" → kelebihan_jp = \"建局がある\". ' +
-  'Untuk array (pendidikan, pekerjaan, keluarga): terjemahkan SEMUA baris.\n';
+  'TERJEMAHAN (saat kandidat meminta terjemah/translate): WAJIB kembalikan JSON dengan SEMUA field _jp terisi dari _id.' +
+  'JANGAN mengubah, menyingkat, atau memparafrase teks _id yang sudah terisi — salin ulang apa adanya, satu karakter pun jangan berubah; hanya field _jp yang boleh diisi nilai baru.' +
+  'Contoh: kelebihan_id sudah terisi Disiplin dan jujur — kembalikan kelebihan_id yang sama persis, lalu isi kelebihan_jp = 規律正しく正直です.' +
+  'Reply chat cukup konfirmasi singkat bahwa terjemahan selesai; jangan menulis ulang isi teks kandidat di dalam reply.' +
+  'Untuk array (pendidikan, pekerjaan, keluarga): kirim SEMUA baris, tiap baris memuat field _id yang disalin utuh DAN field _jp hasil terjemahan.';
 
 async function handleProcessAIChat(payload, sessionToken) {
   const p = payload || {};
@@ -237,38 +257,62 @@ async function handleProcessAIChat(payload, sessionToken) {
   try {
     const r = await geminiGenerate(system, history);
     const text = String(r && r.reply ? r.reply : '').trim();
-    if (text) {
-      try {
-        const parsed = parseJsonLoose(text);
-        if (parsed && typeof parsed === 'object' && parsed.reply) {
-          const aiData = parsed.data && typeof parsed.data === 'object' ? parsed.data : undefined;
-          // Auto-translate: isi field _jp yang kosong dari field _id
-          // Run on p.currentData (full form data from DB+AI) — not just aiData,
-          // because AI often returns only _id without _jp for some fields.
-          // autoTranslateMissingJp only calls Gemini for fields where _id exists
-          // but _jp is empty, so no duplicate translations.
-          await autoTranslateMissingJp(p.currentData);
-          // Merge translated JP fields from p.currentData back into aiData
-          // so the frontend receives the translated values.
-          if (aiData) {
-            for (const pair of AI_ID_JP_PAIRS) {
-              const jpVal = getNested(p.currentData, pair.jpPath);
-              if (jpVal && !getNested(aiData, pair.jpPath)) {
-                setNested(aiData, pair.jpPath, jpVal);
-              }
-            }
-          }
-          return {
-            reply: String(parsed.reply),
-            data: aiData || {},
-          };
-        }
-      } catch (e) {
-        /* bukan JSON — fallback balas teks biasa */
+    if (!text) return r;
+    let reply = text;
+    let aiData: Record<string, any> | undefined;
+    try {
+      const parsed = parseJsonLoose(text);
+      if (parsed && typeof parsed === 'object' && parsed.reply) {
+        reply = String(parsed.reply);
+        if (parsed.data && typeof parsed.data === 'object') aiData = parsed.data;
       }
-      return { reply: text };
+    } catch (e) {
+      /* bukan JSON — balas teks biasa */
     }
-    return r;
+    // Auto-translate: isi field _jp yang kosong dari field _id. Jalan SELALU
+    // (tidak hanya kalau model patuh format JSON) — kalau kandidat minta
+    // terjemahan dan model malah balas teks ("Jeklin sedang menerjemahkan…"),
+    // semua kolom JP yang kosong tetap diisi. HANYA SATU batch Gemini, dan hanya
+    // untuk field yang balasan model BELUM isi — nilai _jp model tidak pernah
+    // ditimpa (model-wins), tanpa panggilan kedua yang sia-sia.
+    const modelSentJson = aiData !== undefined;
+    const covered = new Set<string>();
+    if (aiData) {
+      for (const pair of AI_ID_JP_PAIRS) {
+        if (getNested(aiData, pair.jpPath)) covered.add(pair.jpPath.join('.'));
+      }
+      for (const afp of ARRAY_FIELD_PAIRS) {
+        const arr = Array.isArray(aiData[afp.type]) ? aiData[afp.type] : [];
+        for (let i = 0; i < arr.length; i++) {
+          if (arr[i] && arr[i][afp.jpKey]) covered.add(afp.type + '.' + i + '.' + afp.jpKey);
+        }
+      }
+    }
+    const translatedPaths = await autoTranslateMissingJp(p.currentData, covered);
+    if (translatedPaths.length) {
+      if (!aiData) aiData = {};
+      for (const jpPath of translatedPaths) {
+        const jpVal = getNested(p.currentData, jpPath.split('.'));
+        if (!jpVal) continue;
+        // model-wins: jangan menimpa _jp yang sudah model isi di balasan JSON.
+        if (modelSentJson && getNested(aiData, jpPath.split('.'))) continue;
+        setNested(aiData, jpPath.split('.'), jpVal);
+      }
+    }
+    if (modelSentJson && aiData) {
+      // Deterministic guard (hanya saat model mengirim JSON): _id apa pun yang
+      // model kembalikan di aiData harus sama persis (byte-for-byte) dengan
+      // original di p.currentData. Kalau model memparafrase/memendek _id pada
+      // giliran translate, restore dari currentData. Hanya _jp yang boleh berubah.
+      // Saat model balas prosa, aiData sengaja hanya berisi _jp hasil batch
+      // (tanpa _id) — tidak ada _id yang bisa berubah, guard tidak dijalankan.
+      for (const pair of AI_ID_JP_PAIRS) {
+        const origId = getNested(p.currentData, pair.idPath);
+        const inAi = getNested(aiData, pair.idPath);
+        if (inAi !== origId) setNested(aiData, pair.idPath, origId);
+      }
+    }
+    return { reply, data: aiData || {} };
   } catch (e) {
     // Jangan bocorkan detail error mentah ke user — log detailnya di server saja.
     console.error('[AI] processAIChat error:', e && e.message ? e.message : e);
