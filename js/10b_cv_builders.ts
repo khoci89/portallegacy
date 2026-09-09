@@ -13,8 +13,25 @@ import { registerSeamAliases } from './core/bridge.ts';
 // hanya punya 1-3 pendidikan tetap tampil sama seperti sebelumnya. ---
 export function buildEduRows(eduList, v) {
   let eduHtml = '';
+  // Sort education chronologically / by level
+  const tingkatOrder = { 'sd': 1, 'mi': 1, 'smp': 2, 'mts': 2, 'sma': 3, 'smk': 3, 'ma': 3, 'd1': 4, 'd2': 4, 'd3': 4, 'd4': 4, 's1': 4, 's2': 4, 'universitas': 4, 'lpk': 5 };
+  const getTingkatVal = (t) => {
+    const raw = String(t || '').toLowerCase();
+    for (const [k, val] of Object.entries(tingkatOrder)) {
+      if (raw.includes(k)) return val;
+    }
+    return 99;
+  };
+  const sortedEdu = (eduList || []).slice().sort((a, b) => {
+    let tA = getTingkatVal(a?.tingkat);
+    let tB = getTingkatVal(b?.tingkat);
+    if (tA !== tB) return tA - tB;
+    let yA = String(a?.masuk || a?.tahun_masuk || a?.tahunMasuk || '').match(/\d{4}/);
+    let yB = String(b?.masuk || b?.tahun_masuk || b?.tahunMasuk || '').match(/\d{4}/);
+    return (yA ? parseInt(yA[0]) : 9999) - (yB ? parseInt(yB[0]) : 9999);
+  });
   for (let i = 1; i <= 5; i++) {
-    let pE = Object.assign({}, eduList[i - 1] || {});
+    let pE = Object.assign({}, sortedEdu[i - 1] || {});
     // Toleransi dua bentuk kunci backend: {masuk,lulus,sekolah,jurusan_id}
     // (bentuk baru) vs {tahun_masuk,tahun_lulus,nama_sekolah,jurusan} (lama).
     if (!window.isGood(pE.masuk) && (window.isGood(pE.tahun_masuk) || window.isGood(pE.tahunMasuk))) pE.masuk = pE.tahun_masuk || pE.tahunMasuk;
@@ -65,8 +82,14 @@ export function buildEduRows(eduList, v) {
 // pekerjaan tetap tampil sama seperti sebelumnya. ---
 export function buildJobRows(jobList, v) {
   let jobHtml = '';
+  // Sort jobs chronologically
+  const sortedJob = (jobList || []).slice().sort((a, b) => {
+    let yA = String(a?.masuk || a?.tahun_masuk || a?.tahunMasuk || '').match(/\d{4}/);
+    let yB = String(b?.masuk || b?.tahun_masuk || b?.tahunMasuk || '').match(/\d{4}/);
+    return (yA ? parseInt(yA[0]) : 9999) - (yB ? parseInt(yB[0]) : 9999);
+  });
   for (let i = 1; i <= 3; i++) {
-    let pJ = Object.assign({}, jobList[i - 1] || {});
+    let pJ = Object.assign({}, sortedJob[i - 1] || {});
     // Toleransi dua bentuk kunci backend: {masuk,keluar,perusahaan} vs {tahun_masuk,tahun_keluar,nama_perusahaan}.
     if (!window.isGood(pJ.masuk) && (window.isGood(pJ.tahun_masuk) || window.isGood(pJ.tahunMasuk))) pJ.masuk = pJ.tahun_masuk || pJ.tahunMasuk;
     if (!window.isGood(pJ.keluar) && (window.isGood(pJ.tahun_keluar) || window.isGood(pJ.tahunKeluar))) pJ.keluar = pJ.tahun_keluar || pJ.tahunKeluar;
@@ -99,6 +122,17 @@ export function buildJobRows(jobList, v) {
     if (ker_jp === '-') ker_jp = '';
     // Baris tambahan (ke-3) tanpa isi di-skip supaya tabel tidak melebar kosong
     // (cek SETELAH normalisasi '-' -> '' karena '-' masih truthy).
+    let finalGaji = '\u00A5&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-';
+    if (gaji) {
+      let gStr = String(gaji).trim().toLowerCase();
+      if (gStr.includes('rp') || gStr.includes('rupiah') || gStr.includes('idr')) {
+        let clean = gStr.replace(/rp\.?\s*|rupiah|idr/ig, '').trim();
+        finalGaji = 'Rp ' + clean;
+      } else {
+        let clean = gStr.replace(/\u00A5|yen|¥/ig, '').trim();
+        finalGaji = '\u00A5&nbsp;&nbsp;&nbsp;' + clean;
+      }
+    }
     if (i > 2 && !(pt_id || msk || klr)) continue;
 
     let klrFmt =
@@ -118,7 +152,7 @@ export function buildJobRows(jobList, v) {
               <td class="val-center border-l-none">${klrFmt}</td>
               <td colspan="2" class="val-center">${finalPt}</td>
               <td class="val-center">${finalKer}</td>
-              <td class="val-right pr-1">${gaji ? '¥&nbsp;&nbsp;&nbsp;' + gaji : '¥&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-'}</td>
+              <td class="val-right pr-1">${finalGaji}</td>
             </tr>`;
   }
   return jobHtml;
@@ -127,8 +161,12 @@ export function buildJobRows(jobList, v) {
 // --- BLOK KELUARGA (maks 6 baris) ---
 export function buildFamRows(famList, v) {
   let famHtml = '';
+  // Sort family by age descending
+  const sortedFam = (famList || []).slice().sort((a, b) => {
+    return (parseInt(b?.umur || b?.usia || 0)) - (parseInt(a?.umur || a?.usia || 0));
+  });
   for (let i = 1; i <= 6; i++) {
-    let kF = Object.assign({}, famList[i - 1] || {});
+    let kF = Object.assign({}, sortedFam[i - 1] || {});
     // Toleransi dua bentuk kunci backend: {umur} vs {usia}.
     if (!window.isGood(kF.umur) && window.isGood(kF.usia)) kF.umur = kF.usia;
     let hub = window.isGood(kF.hubungan)
@@ -161,7 +199,7 @@ export function buildFamRows(famList, v) {
               <td colspan="2" class="val-center">${nm.toUpperCase()}</td>
               <td class="val-center">${u ? u + '歳' : ''}</td>
               <td class="val-center">${finalPek}</td>
-              <td class="val-right pr-1">${g ? '¥&nbsp;&nbsp;&nbsp;' + g : '¥&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-'}</td>
+              <td class="val-right pr-1">${finalGaji}</td>
             </tr>`;
   }
   return famHtml;
