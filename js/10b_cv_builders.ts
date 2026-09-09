@@ -17,9 +17,9 @@ export function buildEduRows(eduList, v) {
     let pE = Object.assign({}, eduList[i - 1] || {});
     // Toleransi dua bentuk kunci backend: {masuk,lulus,sekolah,jurusan_id}
     // (bentuk baru) vs {tahun_masuk,tahun_lulus,nama_sekolah,jurusan} (lama).
-    if (!window.isGood(pE.masuk) && window.isGood(pE.tahun_masuk)) pE.masuk = pE.tahun_masuk;
-    if (!window.isGood(pE.lulus) && window.isGood(pE.tahun_lulus)) pE.lulus = pE.tahun_lulus;
-    if (!window.isGood(pE.sekolah) && window.isGood(pE.nama_sekolah)) pE.sekolah = pE.nama_sekolah;
+    if (!window.isGood(pE.masuk) && (window.isGood(pE.tahun_masuk) || window.isGood(pE.tahunMasuk))) pE.masuk = pE.tahun_masuk || pE.tahunMasuk;
+    if (!window.isGood(pE.lulus) && (window.isGood(pE.tahun_lulus) || window.isGood(pE.tahunLulus))) pE.lulus = pE.tahun_lulus || pE.tahunLulus;
+    if (!window.isGood(pE.sekolah) && (window.isGood(pE.nama_sekolah) || window.isGood(pE.namaSekolah))) pE.sekolah = pE.nama_sekolah || pE.namaSekolah;
     if (!window.isGood(pE.jurusan_id) && window.isGood(pE.jurusan)) pE.jurusan_id = pE.jurusan;
     let msk = window.isGood(pE.masuk) ? pE.masuk : v('PENDIDIKAN' + i + 'TAHUNMASUK');
     let lls = window.isGood(pE.lulus) ? pE.lulus : v('PENDIDIKAN' + i + 'TAHUNLULUS');
@@ -68,10 +68,10 @@ export function buildJobRows(jobList, v) {
   for (let i = 1; i <= 3; i++) {
     let pJ = Object.assign({}, jobList[i - 1] || {});
     // Toleransi dua bentuk kunci backend: {masuk,keluar,perusahaan} vs {tahun_masuk,tahun_keluar,nama_perusahaan}.
-    if (!window.isGood(pJ.masuk) && window.isGood(pJ.tahun_masuk)) pJ.masuk = pJ.tahun_masuk;
-    if (!window.isGood(pJ.keluar) && window.isGood(pJ.tahun_keluar)) pJ.keluar = pJ.tahun_keluar;
-    if (!window.isGood(pJ.perusahaan) && window.isGood(pJ.nama_perusahaan))
-      pJ.perusahaan = pJ.nama_perusahaan;
+    if (!window.isGood(pJ.masuk) && (window.isGood(pJ.tahun_masuk) || window.isGood(pJ.tahunMasuk))) pJ.masuk = pJ.tahun_masuk || pJ.tahunMasuk;
+    if (!window.isGood(pJ.keluar) && (window.isGood(pJ.tahun_keluar) || window.isGood(pJ.tahunKeluar))) pJ.keluar = pJ.tahun_keluar || pJ.tahunKeluar;
+    if (!window.isGood(pJ.perusahaan) && (window.isGood(pJ.nama_perusahaan) || window.isGood(pJ.namaPerusahaan)))
+      pJ.perusahaan = pJ.nama_perusahaan || pJ.namaPerusahaan;
     let msk = window.isGood(pJ.masuk) ? pJ.masuk : v('PEKERJAAN' + i + 'TAHUNMASUK');
     let klr = window.isGood(pJ.keluar) ? pJ.keluar : v('PEKERJAAN' + i + 'TAHUNKELUAR');
     let pt_id = window.isGood(pJ.perusahaan)

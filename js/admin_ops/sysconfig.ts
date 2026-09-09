@@ -35,6 +35,8 @@ export const CONFIG_CATEGORIES = [
   { key: 'lokasi', label: 'Lokasi Penempatan', color: 'emerald', hint: '', order: 5 },
   { key: 'syarat', label: 'Syarat & Ketentuan Kandidat', color: 'amber', hint: '', order: 6 },
   { key: 'tsk', label: 'Daftar Pengurus (TSK)', color: 'rose', hint: '', order: 7 },
+  { key: 'jft', label: 'Opsi Sertifikat JFT / JLPT', color: 'blue', hint: 'N1, N2, N3, N4, N5, JFT BASIC A2, dsb', order: 8 },
+  { key: 'ssw', label: 'Opsi Lisensi SSW / Keahlian', color: 'cyan', hint: 'KAIGO, AGRICULTURE, dsb', order: 9 },
 ].sort(function (a, b) {
   return a.order - b.order;
 });

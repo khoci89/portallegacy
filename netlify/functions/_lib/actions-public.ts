@@ -48,6 +48,8 @@ const DROPDOWN_MAP = {
   tsk: 'tsk',
   list_lokasi: 'lokasi',
   list_syarat: 'syarat',
+  list_jft: 'jft',
+  list_ssw: 'ssw',
   lokasi__link_zoom: 'lokasiZoom',
   list_status_loker: 'statusLoker',
   status_form: 'statusForm',

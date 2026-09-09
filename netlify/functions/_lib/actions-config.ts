@@ -11,6 +11,8 @@ const CONFIG_TYPE_MAP = {
   tsk: 'tsk',
   lokasi: 'list_lokasi',
   syarat: 'list_syarat',
+  jft: 'list_jft',
+  ssw: 'list_ssw',
   lokasiZoom: 'lokasi__link_zoom',
   statusLoker: 'list_status_loker',
   statusForm: 'status_form',

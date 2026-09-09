@@ -3,6 +3,10 @@ import { requireRole } from '../actions-auth.ts';
 import { buildRingkasData, findMasterByWa, APPLY_WA_COLS } from './cv';
 import { geminiGenerate, parseJsonLoose } from './providers';
 import { translateItemsToJapanese } from './translate-lines';
+// SATU registry pasangan bilingual (ID→JP) — jp-fields.ts. Jangan tambah
+// pasangan di sini; tambahkan di registry supaya chat.ts & actions-master.ts
+// tidak pernah drift.
+import { JP_FIELD_PAIRS as AI_ID_JP_PAIRS, ARRAY_FIELD_PAIRS } from './jp-fields';
 
 // ---------------------------------------------------------------------------
 // Auto-translate: isi field _jp yang kosong dari field _id (terjemahan ID→JP).
@@ -10,48 +14,6 @@ import { translateItemsToJapanese } from './translate-lines';
 // kosong dan BELUM diisi balasan model (covered) — model-wins, tanpa hasil
 // translate yang dibuang (dulu memicu regresi latensi/panggilan kedua).
 // ---------------------------------------------------------------------------
-const AI_ID_JP_PAIRS: Array<{
-  idPath: string[];
-  jpPath: string[];
-}> = [
-  // medis
-  { idPath: ['medis', 'alergi_id'], jpPath: ['medis', 'alergi_jp'] },
-  { idPath: ['medis', 'riwayat_medis_id'], jpPath: ['medis', 'riwayat_medis_jp'] },
-  { idPath: ['medis', 'riwayat_kecelakaan_id'], jpPath: ['medis', 'riwayat_kecelakaan_jp'] },
-  // wawancara — keys must match buildMasterNested output exactly
-  { idPath: ['wawancara', 'promosi_id'], jpPath: ['wawancara', 'promosi_jp'] },
-  { idPath: ['wawancara', 'kelebihan_id'], jpPath: ['wawancara', 'kelebihan_jp'] },
-  { idPath: ['wawancara', 'kekurangan_id'], jpPath: ['wawancara', 'kekurangan_jp'] },
-  { idPath: ['wawancara', 'hobi_id'], jpPath: ['wawancara', 'hobi_jp'] },
-  { idPath: ['wawancara', 'keahlian_id'], jpPath: ['wawancara', 'keahlian_jp'] },
-  { idPath: ['wawancara', 'motivasi_id'], jpPath: ['wawancara', 'motivasi_jp'] },
-
-  { idPath: ['wawancara', 'motivasi_ke_jepang'], jpPath: ['wawancara', 'motivasi_ke_jepang_jp'] },
-  { idPath: ['wawancara', 'alasan_bidang_id'], jpPath: ['wawancara', 'alasan_bidang_jp'] },
-
-  {
-    idPath: ['wawancara', 'alasan_memilih_bidang'],
-    jpPath: ['wawancara', 'alasan_memilih_bidang_jp'],
-  },
-  { idPath: ['wawancara', 'rencana_pulang_id'], jpPath: ['wawancara', 'rencana_pulang_jp'] },
-
-  {
-    idPath: ['wawancara', 'rencana_setelah_pulang'],
-    jpPath: ['wawancara', 'rencana_setelah_pulang_jp'],
-  },
-  { idPath: ['wawancara', 'keinginan_id'], jpPath: ['wawancara', 'keinginan_jp'] },
-  { idPath: ['wawancara', 'tujuan_ke_jepang'], jpPath: ['wawancara', 'tujuan_ke_jepang_jp'] },
-  // identitas
-  { idPath: ['identitas', 'tempat_lahir'], jpPath: ['identitas', 'tempat_lahir_jp'] },
-  { idPath: ['identitas', 'agama'], jpPath: ['identitas', 'agama_jp'] },
-  { idPath: ['identitas', 'status_nikah'], jpPath: ['identitas', 'status_nikah_jp'] },
-  { idPath: ['identitas', 'alamat'], jpPath: ['identitas', 'alamat_jp'] },
-  // kenalan_jepang
-  { idPath: ['kenalan_jepang', 'nama_id'], jpPath: ['kenalan_jepang', 'nama_jp'] },
-  { idPath: ['kenalan_jepang', 'hubungan_id'], jpPath: ['kenalan_jepang', 'hubungan_jp'] },
-  { idPath: ['kenalan_jepang', 'pekerjaan_id'], jpPath: ['kenalan_jepang', 'pekerjaan_jp'] },
-  { idPath: ['kenalan_jepang', 'alamat_id'], jpPath: ['kenalan_jepang', 'alamat_jp'] },
-];
 function getNested(obj: any, path: string[]): string {
   let cur = obj;
   for (const k of path) {
@@ -115,17 +77,6 @@ async function autoTranslateMissingJp(
   }
   return filled;
 }
-
-// Pasangan field ID/JP untuk baris array (pendidikan/pekerjaan/keluarga).
-// Dipakai autoTranslateMissingJp DAN coverage di handleProcessAIChat.
-const ARRAY_FIELD_PAIRS: Array<{ type: string; idKey: string; jpKey: string }> = [
-  { type: 'pendidikan', idKey: 'sekolah', jpKey: 'sekolah_jp' },
-  { type: 'pendidikan', idKey: 'jurusan_id', jpKey: 'jurusan_jp' },
-  { type: 'pekerjaan', idKey: 'perusahaan', jpKey: 'perusahaan_jp' },
-  { type: 'pekerjaan', idKey: 'jabatan', jpKey: 'jabatan_jp' },
-  { type: 'keluarga', idKey: 'hubungan_id', jpKey: 'hubungan_jp' },
-  { type: 'keluarga', idKey: 'pekerjaan', jpKey: 'pekerjaan_jp' },
-];
 
 // ai/chat.js — domain AI chat & wawancara: Qween Jeklin (chat kandidat master),
 // Jeklin copilot admin, Dede Jeklin (siswa baru), wawancara kerja (mensetsu)
@@ -544,7 +495,7 @@ function buildInterviewSystem(profil, kota) {
   lines.push(
     'TUTUP wawancara dengan sopan (doumo arigatou gozaimasu + semangat) ketika semua topik inti sudah terjawab ATAU kandidat menutup pembicaraan.',
     'Di pesan PENUTUP, setelah teks terima kasih, tambahkan baris persis "===HASIL===" lalu JSON TUNGGAL tanpa teks lain:',
-    '{ "score": 0-10, "nilai": "A/B/C", "rekomendasi": "...", "biodata": { kunci camelCase — hanya field yang KANDIDAT sebutkan: nama, furigana, tempatLahir, tglLahir, alamat, email, gender, hobi, kelebihan, kekurangan, motivasiJepang, tujuanJepang, keinginan, rencanaPulang, promosi, keahlianKhusus, eksJepang, gajiYen, tabungan, bhsJepang, nilai, lisensi, ssw, noPaspor, noCoe, daruratNama, daruratWa, pendidikan: [{tingkat, namaSekolah, jurusan, tahunMasuk, tahunLulus}], pekerjaan: [{namaPerusahaan, jabatan, tahunMasuk, tahunKeluar}] }, "catatan": "..." }',
+    '{ "score": 0-10, "nilai": "A/B/C", "rekomendasi": "...", "biodata": { kunci camelCase — hanya field yang KANDIDAT sebutkan: nama, furigana, tempatLahir, tglLahir, alamat, email, gender, hobi, kelebihan, kekurangan, motivasiJepang, tujuanJepang, keinginan, rencanaPulang, promosi, keahlianKhusus, eksJepang, gajiYen, tabungan, bhsJepang, nilai, lisensi, ssw, noPaspor, noCoe, daruratNama, daruratWa, pendidikan: [{tingkat, sekolah, jurusan_id, masuk, lulus}], pekerjaan: [{perusahaan, jabatan, masuk, keluar}] }, "catatan": "..." }',
     'Balas dalam Bahasa Indonesia, ramah dan profesional seperti sensei asli.',
   );
   return lines.join('\n');
@@ -662,7 +613,7 @@ async function handleSelesaikanWawancara(payload, sessionToken) {
     '.\nDi bawah ini TRANSCRIPT wawancara:\n---\n' +
     (transkrip || '(kandidat belum menjawab apa pun)') +
     '\n---\nBuat RINGKASAN HASIL WAWANCARA dalam JSON TUNGGAL (tanpa teks lain):\n' +
-    '{ "score": 0-10, "nilai": "A/B/C", "rekomendasi": "saran perbaikan singkat", "biodata": { kunci camelCase — HANYA data yang kandidat SEBUTKAN: nama, furigana, tempatLahir, tglLahir, alamat, email, gender, hobi, kelebihan, kekurangan, motivasiJepang, tujuanJepang, keinginan, rencanaPulang, promosi, keahlianKhusus, eksJepang, gajiYen, tabungan, bhsJepang, nilai, lisensi, ssw, noPaspor, noCoe, daruratNama, daruratWa, pendidikan: [{tingkat, namaSekolah, jurusan, tahunMasuk, tahunLulus}], pekerjaan: [{namaPerusahaan, jabatan, tahunMasuk, tahunKeluar}] }, "catatan": "hal yang perlu diperbaiki kandidat" }';
+    '{ "score": 0-10, "nilai": "A/B/C", "rekomendasi": "saran perbaikan singkat", "biodata": { kunci camelCase — HANYA data yang kandidat SEBUTKAN: nama, furigana, tempatLahir, tglLahir, alamat, email, gender, hobi, kelebihan, kekurangan, motivasiJepang, tujuanJepang, keinginan, rencanaPulang, promosi, keahlianKhusus, eksJepang, gajiYen, tabungan, bhsJepang, nilai, lisensi, ssw, noPaspor, noCoe, daruratNama, daruratWa, pendidikan: [{tingkat, sekolah, jurusan_id, masuk, lulus}], pekerjaan: [{perusahaan, jabatan, masuk, keluar}] }, "catatan": "hal yang perlu diperbaiki kandidat" }';
   try {
     const r = await geminiGenerate(system, []);
     const hasil = parseJsonLoose(r.reply);

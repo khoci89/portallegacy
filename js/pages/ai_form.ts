@@ -416,6 +416,15 @@ export function initApp() {
   }
   enableManualPreview();
 
+  // Fetch dropdowns from sys_config
+  window.callAPI('getAppData', ['public']).then(function(res) {
+    if (res && res.dropdowns) {
+      if (document.getElementById('jft-options')) window.populate('jft-options', res.dropdowns.jft || []);
+      if (document.getElementById('ssw-options')) window.populate('ssw-options', res.dropdowns.ssw || []);
+      if (document.getElementById('pekerjaan-options')) window.populate('pekerjaan-options', res.dropdowns.kategori || []);
+    }
+  }).catch(function(e) { console.error('Gagal memuat dropdowns', e); });
+
   // Buang base64 JFT/SSW dari draft versi lama (semua WA/job) supaya quota
   // localStorage langsung lega untuk user yang pernah pakai versi lama.
   // Idempotent — aman dipanggil ulang walau pwa.js sudah menjalankannya.

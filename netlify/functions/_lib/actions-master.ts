@@ -1,5 +1,9 @@
 import { APPLY_WA_COLS } from './ai/cv';
 import { translateItemsToJapanese } from './ai/translate-lines';
+// SATU registry pasangan bilingual (ID→JP) — ai/jp-fields.ts. JP_TRANSLATE_MAP
+// di bawah diturunkan dari registry supaya tidak pernah drift dengan
+// AI_ID_JP_PAIRS di ai/chat.ts.
+import { JP_FIELD_PAIRS } from './ai/jp-fields';
 import { normalizeWa, pick, supabaseJson, supabaseUpsert, toText } from './db/client';
 import { findCandidateByWaFiltered, findCandidates } from './db/candidates';
 import { fetchMasterByWa } from './db/master';
@@ -169,24 +173,13 @@ const MASTER_COLUMN_MAP = {
 };
 
 // Peta auto-translate: form key (ID text) -> DB column JP.
-const JP_TRANSLATE_MAP: Record<string, string> = {
-  promosi: 'promosi_diri_jp',
-  kelebihan: 'kelebihan_jp',
-  kekurangan: 'kekurangan_jp',
-  hobi: 'hobi_jp',
-  keahlianKhusus: 'keahlian_khusus_jp',
-  alasanBidang: 'alasan_memilih_bidang_jp',
-  motivasiJepang: 'motivasi_ke_jepang_jp',
-  keinginan: 'keinginan_pribadi_jp',
-  rencanaPulang: 'rencana_setelah_pulang_jp',
-  tujuanJepang: 'tujuan_ke_jepang_jp',
-  penyakit: 'riwayat_medis_jp',
-  alergi: 'alergi_jp',
-  laka: 'riwayat_kecelakaan_jp',
-  tempatLahir: 'tempat_lahir_jp',
-  agama: 'agama_jp',
-  alamat: 'alamat_jp',
-};
+// Diturunkan dari ai/jp-fields.ts (satu-satunya sumber kebenaran pasangan
+// bilingual). Entri registry yang tidak punya formKey/jpCol (mis. kenalan
+// jepang yang hanya hidup di ai_data_json) otomatis tidak masuk peta ini.
+const JP_TRANSLATE_MAP: Record<string, string> = {};
+for (const pair of JP_FIELD_PAIRS) {
+  if (pair.formKey && pair.jpCol) JP_TRANSLATE_MAP[pair.formKey] = pair.jpCol;
+}
 
 async function autoTranslateToJp(
   idFields: Record<string, string>,

@@ -120,7 +120,7 @@ async function syncCandidateDariForm(f, status) {
   const codeJob = String(f.code_job || '');
   if (!wa) return;
   const row = await findCandidateByWa(wa);
-  if (status === 'LULUS') {
+  if (status === 'LULUS' || status === 'TANDAI') {
     const now = new Date().toISOString();
     const base: Record<string, any> = {
       nama_lengkap: String(f.nama_lengkap || ''),
@@ -128,18 +128,30 @@ async function syncCandidateDariForm(f, status) {
       usia: String(f.usia || ''),
       tb: String(f.tb || ''),
       bb: String(f.bb || ''),
-      status_kandidat: 'LULUS',
       updated_at: now,
     };
+    
+    // Jika status = LULUS, kita juga set status_kandidat agar kandidat muncul di list job
+    if (status === 'LULUS') {
+      base.status_kandidat = 'LULUS';
+    }
+    
+    const masterBase: Record<string, any> = {
+      nama_lengkap: String(f.nama_lengkap || ''),
+      gender: String(f.gender || ''),
+      updated_at: now,
+    };
+
     // FIX (audit 2026-09-07): dokumen hanya di-set jika baris mail MEMBAWA
     // nilainya. Dulu `f.xxx || ''` menimpa dokumen kandidat dengan string
     // kosong — multi-apply: lamaran job B tanpa CV yang di-approve menghapus
     // file_cv hasil upload di job A.
-    if (f.pas_photo) base.pas_photo = f.pas_photo;
-    if (f.jft) base.jft = f.jft;
-    if (f.ssw) base.ssw = f.ssw;
-    if (f.file_cv) base.file_cv = f.file_cv;
-    if (codeJob) base.id_loker_pilihan = codeJob;
+    if (f.pas_photo) { base.pas_photo = f.pas_photo; masterBase.pas_photo = f.pas_photo; }
+    if (f.jft) { base.jft = f.jft; masterBase.jft_url = f.jft; }
+    if (f.ssw) { base.ssw = f.ssw; masterBase.ssw_url = f.ssw; }
+    if (f.file_cv) { base.file_cv = f.file_cv; masterBase.file_cv = f.file_cv; }
+    if (status === 'LULUS' && codeJob) base.id_loker_pilihan = codeJob;
+    
     if (row && row.id !== undefined) {
       for (const k of Object.keys(base)) if (base[k] === undefined) delete base[k];
       await supabaseJson('PATCH', 'database_candidate', {
@@ -163,6 +175,29 @@ async function syncCandidateDariForm(f, status) {
       await supabaseUpsert('database_candidate', base, ['no_wa'], {
         headers: { Prefer: 'return=minimal' },
       });
+    }
+    
+    // FIX: Sinkronisasi update CV AI (master_database_candidate)
+    try {
+      const rowMasterRows = await supabaseJson('GET', 'master_database_candidate', {
+        query: { select: 'id', no_wa: 'eq.' + wa, limit: 1 },
+      });
+      const rowMaster = Array.isArray(rowMasterRows) ? rowMasterRows[0] : null;
+      if (rowMaster && rowMaster.id !== undefined) {
+        await supabaseJson('PATCH', 'master_database_candidate', {
+          query: { id: 'eq.' + rowMaster.id },
+          body: masterBase,
+          headers: { Prefer: 'return=minimal' },
+        });
+      } else {
+        masterBase.no_wa = wa;
+        masterBase.created_at = now;
+        await supabaseUpsert('master_database_candidate', masterBase, ['no_wa'], {
+          headers: { Prefer: 'return=minimal' },
+        });
+      }
+    } catch (eMaster) {
+      console.error('[form-status] sync master_database_candidate:', eMaster && eMaster.message ? eMaster.message : eMaster);
     }
   } else if (status === 'GAGAL' && row && row.id !== undefined) {
     const upd = { status_kandidat: 'GAGAL', updated_at: new Date().toISOString() };
@@ -238,6 +273,13 @@ async function handleTandaiDibacaForm(payload, sessionToken) {
     });
     f.status = prevStatus;
     f.feedback_berkas = newFb;
+    
+    try {
+      await syncCandidateDariForm(f, 'TANDAI');
+    } catch (eSync) {
+      console.error('[tandai-dibaca] sync master error:', eSync);
+    }
+    
     // FIX #6: rowIndex diabaikan — frontend patching by id.
     return { success: true, form: mapForm(f, 0) };
   } catch (e) {
@@ -443,4 +485,5 @@ export {
   appendFeedback,
   syncBiodataKeMail,
   syncFormMailDariUpload,
+  syncCandidateDariForm,
 };
