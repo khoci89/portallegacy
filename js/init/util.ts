@@ -215,6 +215,22 @@ export function rePopulateDropdowns() {
     ['ef-kategori', DROPDOWNS.kategori, null],
     ['ef-tsk', DROPDOWNS.tsk, null],
     ['ef-gender', DROPDOWNS.gender, null],
+    ['gender', DROPDOWNS.gender, null],
+    ['agama', DROPDOWNS.agama, null],
+    ['statusNikah', DROPDOWNS.statusNikah, null],
+    ['goldar', DROPDOWNS.goldar, null],
+    ['tangan', DROPDOWNS.tangan, null],
+    ['tahanAc', DROPDOWNS.tahanAc, null],
+    ['kacamata', DROPDOWNS.kacamata, null],
+    ['butaWarna', DROPDOWNS.butaWarna, null],
+    ['tato', DROPDOWNS.tato, null],
+    ['tindik', DROPDOWNS.tindik, null],
+    ['merokok', DROPDOWNS.merokok, null],
+    ['alkohol', DROPDOWNS.alkohol, null],
+    ['eksJepang', DROPDOWNS.eksJepang, null],
+    ['bhsJepang', DROPDOWNS.jft, null],
+    ['lisensi', DROPDOWNS.ssw, null],
+    ['lisensi2', DROPDOWNS.ssw, null],
   ];
   for (var i = 0; i < defs.length; i++) {
     var el = document.getElementById(defs[i][0]);

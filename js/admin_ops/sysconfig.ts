@@ -37,6 +37,19 @@ export const CONFIG_CATEGORIES = [
   { key: 'tsk', label: 'Daftar Pengurus (TSK)', color: 'rose', hint: '', order: 7 },
   { key: 'jft', label: 'Opsi Sertifikat JFT / JLPT', color: 'blue', hint: 'N1, N2, N3, N4, N5, JFT BASIC A2, dsb', order: 8 },
   { key: 'ssw', label: 'Opsi Lisensi SSW / Keahlian', color: 'cyan', hint: 'KAIGO, AGRICULTURE, dsb', order: 9 },
+  { key: 'gender', label: 'Jenis Kelamin (Gender)', color: 'blue', hint: 'LAKI-LAKI, PEREMPUAN', order: 10 },
+  { key: 'agama', label: 'Agama', color: 'indigo', hint: 'ISLAM, KRISTEN, dll', order: 11 },
+  { key: 'statusNikah', label: 'Status Nikah', color: 'pink', hint: 'BELUM MENIKAH, MENIKAH, CERAI', order: 12 },
+  { key: 'goldar', label: 'Golongan Darah', color: 'red', hint: 'A, B, AB, O', order: 13 },
+  { key: 'tangan', label: 'Tangan Dominan', color: 'orange', hint: 'KANAN, KIRI, KEDUANYA', order: 14 },
+  { key: 'tahanAc', label: 'Tahan Kerja Tanpa AC', color: 'cyan', hint: 'YA, TIDAK', order: 15 },
+  { key: 'kacamata', label: 'Berkacamata', color: 'blue', hint: 'YA, TIDAK', order: 16 },
+  { key: 'butaWarna', label: 'Buta Warna', color: 'yellow', hint: 'YA, TIDAK', order: 17 },
+  { key: 'tato', label: 'Bertato', color: 'rose', hint: 'YA, TIDAK', order: 18 },
+  { key: 'tindik', label: 'Bertindik', color: 'purple', hint: 'YA, TIDAK', order: 19 },
+  { key: 'merokok', label: 'Merokok', color: 'slate', hint: 'YA, TIDAK', order: 20 },
+  { key: 'alkohol', label: 'Minum Alkohol', color: 'amber', hint: 'YA, TIDAK', order: 21 },
+  { key: 'eksJepang', label: 'Status Eks Jepang', color: 'sky', hint: 'BELUM PERNAH, EX MAGANG, EX EPA', order: 22 },
 ].sort(function (a, b) {
   return a.order - b.order;
 });

@@ -537,7 +537,13 @@ function buildMasterNested(row) {
       alasan_memilih_bidang_jp: v('alasan_memilih_bidang_jp'),
       rencana_setelah_pulang: v('rencana_setelah_pulang'),
       rencana_setelah_pulang_jp: v('rencana_setelah_pulang_jp'),
-      // Alias yang dibaca builder CV (10b_cv_builders.js).
+      // Alias yang dibaca builder CV (10b_cv_builders.js) dan AI Form (ai_form.ts).
+      keahlian_id: v('keahlian_khusus'),
+      keahlian_jp: v('keahlian_khusus_jp'),
+      motivasi_id: v('motivasi_ke_jepang'),
+      motivasi_jp: v('motivasi_ke_jepang_jp'),
+      alasan_bidang_id: v('alasan_memilih_bidang'),
+      alasan_bidang_jp: v('alasan_memilih_bidang_jp'),
       rencana_pulang_id: v('rencana_setelah_pulang'),
       rencana_pulang_jp: v('rencana_setelah_pulang_jp'),
       gaji_yen: v('harapan_gaji_yen'),
@@ -563,6 +569,7 @@ function buildMasterNested(row) {
         arr.push({
           tingkat: toText(tingkat),
           sekolah: v('pendidikan_' + i + '_nama_sekolah'),
+          sekolah_id: v('pendidikan_' + i + '_nama_sekolah'),
           nama_sekolah: v('pendidikan_' + i + '_nama_sekolah'),
           sekolah_jp: v('pendidikan_' + i + '_sekolah_jp'),
           jurusan_id: v('pendidikan_' + i + '_jurusan_id'),
@@ -597,9 +604,11 @@ function buildMasterNested(row) {
         if (nm === undefined || nm === null) continue;
         arr.push({
           perusahaan: toText(nm),
+          perusahaan_id: toText(nm),
           nama_perusahaan: toText(nm),
           perusahaan_jp: v('pekerjaan_' + i + '_perusahaan_jp'),
           jabatan: v('pekerjaan_' + i + '_jabatan'),
+          jabatan_id: v('pekerjaan_' + i + '_jabatan'),
           jabatan_jp: v('pekerjaan_' + i + '_jabatan_jp'),
           masuk: v('pekerjaan_' + i + '_tahun_masuk'),
           tahun_masuk: v('pekerjaan_' + i + '_tahun_masuk'),
@@ -630,8 +639,10 @@ function buildMasterNested(row) {
           umur: v('keluarga_' + i + '_usia'),
           usia: v('keluarga_' + i + '_usia'),
           hubungan: v('keluarga_' + i + '_hubungan'),
+          hubungan_id: v('keluarga_' + i + '_hubungan'),
           hubungan_jp: v('keluarga_' + i + '_hubungan_jp'),
           pekerjaan: v('keluarga_' + i + '_pekerjaan'),
+          pekerjaan_id: v('keluarga_' + i + '_pekerjaan'),
           pekerjaan_jp: v('keluarga_' + i + '_pekerjaan_jp'),
         });
       }

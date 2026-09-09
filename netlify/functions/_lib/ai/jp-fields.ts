@@ -68,10 +68,10 @@ export const JP_FIELD_PAIRS: JpFieldPair[] = [
 // Pasangan field ID/JP untuk baris array (pendidikan/pekerjaan/keluarga).
 // Dipakai autoTranslateMissingJp DAN coverage di handleProcessAIChat.
 export const ARRAY_FIELD_PAIRS: Array<{ type: string; idKey: string; jpKey: string }> = [
-  { type: 'pendidikan', idKey: 'sekolah', jpKey: 'sekolah_jp' },
+  { type: 'pendidikan', idKey: 'sekolah_id', jpKey: 'sekolah_jp' },
   { type: 'pendidikan', idKey: 'jurusan_id', jpKey: 'jurusan_jp' },
-  { type: 'pekerjaan', idKey: 'perusahaan', jpKey: 'perusahaan_jp' },
-  { type: 'pekerjaan', idKey: 'jabatan', jpKey: 'jabatan_jp' },
+  { type: 'pekerjaan', idKey: 'perusahaan_id', jpKey: 'perusahaan_jp' },
+  { type: 'pekerjaan', idKey: 'jabatan_id', jpKey: 'jabatan_jp' },
   { type: 'keluarga', idKey: 'hubungan_id', jpKey: 'hubungan_jp' },
-  { type: 'keluarga', idKey: 'pekerjaan', jpKey: 'pekerjaan_jp' },
+  { type: 'keluarga', idKey: 'pekerjaan_id', jpKey: 'pekerjaan_jp' },
 ];
