@@ -5,6 +5,7 @@
   <base target="_top">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self' https:; connect-src 'self' https:; frame-src 'none'; object-src 'none';">
   <title>ASJ - Pendaftaran Siswa (AI Assistant)</title>
   <link rel="manifest" href="/manifest.webmanifest?v=8f163ba13c">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=b90abf8d0a">
@@ -53,8 +54,8 @@
 
   <!-- TAB MOBILE (Tersembunyi di Desktop) -->
   <div class="md:hidden flex w-full bg-slate-900 border-b border-slate-800 z-50 shadow-md">
-    <button id="btnTabChat" onclick="switchTab('chat')" class="flex-1 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500 transition-colors"><i class="fas fa-crown mr-2"></i> Chat Jeklin</button>
-    <button id="btnTabForm" onclick="switchTab('form')" class="flex-1 py-3 text-xs font-bold text-slate-400 border-b-2 border-transparent transition-colors"><i class="fas fa-file-alt mr-2"></i> Form Siswa</button>
+    <button id="btnTabChat" onclick="switchTab('chat')" aria-label="Tab Chat" class="flex-1 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500 transition-colors"><i class="fas fa-crown mr-2"></i> Chat Jeklin</button>
+    <button id="btnTabForm" onclick="switchTab('form')" aria-label="Tab Form Siswa" class="flex-1 py-3 text-xs font-bold text-slate-400 border-b-2 border-transparent transition-colors"><i class="fas fa-file-alt mr-2"></i> Form Siswa</button>
   </div>
 
   <!-- PANEL KIRI: CHAT JEKLIN -->

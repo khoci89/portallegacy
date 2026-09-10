@@ -11,6 +11,7 @@
 // registerSeamAliases — bukan window.X = X per baris.
 import { registerSeamAliases } from '../core/bridge.ts';
 import { uploadToCloudinary } from '../cloudinary.ts';
+import { escapeHtml } from '../core/html.ts';
 
 // FASE 3/4: field JOB/BIDANG/WA/NAMA dulu diisi server (GAS scriptlet)
 // dari e.parameter saat halaman dibuka. Sekarang dibaca dari query
@@ -170,9 +171,9 @@ function cekRiwayat() {
         warnEl.classList.remove('hidden');
         warnEl.innerHTML =
           "<i class='fas fa-exclamation-triangle mr-1'></i> Nomor ini sudah <b>LULUS</b> untuk: <b>" +
-          daftar +
+          escapeHtml(daftar) +
           '</b>. Pastikan Anda memang ingin melamar <b>' +
-          (curJob || 'job ini') +
+          escapeHtml(curJob || 'job ini') +
           '</b> — lamaran yang sudah LULUS tidak hilang.';
       } else {
         warnEl.classList.add('hidden');
@@ -692,7 +693,7 @@ window.onload = function () {
                 <div class="upload-top">
                   <div class="upload-left">
                     <div class="upload-icon" style="background:linear-gradient(135deg, #1e293b, #334155); color:#94a3b8;"><i class="fa-solid fa-file-invoice"></i></div>
-                    <div><div class="upload-title">${fileReq}</div><div class="upload-sub">Format: Gambar/PDF • Maks 2 MB</div></div>
+                    <div><div class="upload-title">${escapeHtml(fileReq)}</div><div class="upload-sub">Format: Gambar/PDF • Maks 2 MB</div></div>
                   </div>
                   <button type="button" onclick="document.getElementById('extra_${idx}').click()" class="upload-btn" style="background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.2);">UPLOAD</button>
                 </div>

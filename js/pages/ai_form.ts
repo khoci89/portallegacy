@@ -1112,7 +1112,7 @@ function appendHTML(sender, text) {
     '</div>' +
     '</div>';
 
-  $('chatBox').innerHTML += htmlStr;
+  $('chatBox').insertAdjacentHTML('beforeend', htmlStr);
   setTimeout(function () {
     $('chatBox').scrollTop = $('chatBox').scrollHeight;
   }, 100);

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self' https:; connect-src 'self' https:; frame-src 'self'; object-src 'none';">
     <title>ASJ - Candidate Viewer</title>
   <link rel="manifest" href="/manifest.webmanifest?v=8f163ba13c">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=b90abf8d0a">
@@ -159,18 +160,18 @@
                 <i class="fas fa-filter text-pink-400"></i>
                 <span class="text-xs md:text-sm font-bold text-slate-200" id="text-filter-title">Filter:</span>
             </div>
-            <select id="filter-gender" aria-label="Filter Gender" onchange="renderGrid()" aria-label="Filter" class="flex-1 sm:flex-none min-w-[120px] sm:min-w-0 bg-slate-800/80 border border-slate-600 text-slate-200 text-[11px] md:text-xs font-bold rounded-lg px-2 md:px-3 py-2 focus:outline-none focus:border-pink-500 transition-colors cursor-pointer shadow-inner">
+            <select id="filter-gender" aria-label="Filter Gender" onchange="renderGrid()" class="flex-1 sm:flex-none min-w-[120px] sm:min-w-0 bg-slate-800/80 border border-slate-600 text-slate-200 text-[11px] md:text-xs font-bold rounded-lg px-2 md:px-3 py-2 focus:outline-none focus:border-pink-500 transition-colors cursor-pointer shadow-inner">
                 <option value="all" id="opt-gen-all">Semua Gender</option>
                 <option value="l" id="opt-gen-l">Laki-laki (L)</option>
                 <option value="p" id="opt-gen-p">Perempuan (P)</option>
             </select>
-            <select id="filter-age" aria-label="Filter Usia" onchange="renderGrid()" aria-label="Filter" class="flex-1 sm:flex-none min-w-[100px] sm:min-w-0 bg-slate-800/80 border border-slate-600 text-slate-200 text-[11px] md:text-xs font-bold rounded-lg px-2 md:px-3 py-2 focus:outline-none focus:border-pink-500 transition-colors cursor-pointer shadow-inner">
+            <select id="filter-age" aria-label="Filter Usia" onchange="renderGrid()" class="flex-1 sm:flex-none min-w-[100px] sm:min-w-0 bg-slate-800/80 border border-slate-600 text-slate-200 text-[11px] md:text-xs font-bold rounded-lg px-2 md:px-3 py-2 focus:outline-none focus:border-pink-500 transition-colors cursor-pointer shadow-inner">
                 <option value="all" id="opt-age-all">Semua Usia</option>
                 <option value="under20">&lt; 20</option>
                 <option value="20to25">20 - 25</option>
                 <option value="over25">&gt; 25</option>
             </select>
-            <select id="filter-jft" aria-label="Filter Level JFT" onchange="renderGrid()" aria-label="Filter" class="flex-1 sm:flex-none min-w-[130px] sm:min-w-0 bg-slate-800/80 border border-slate-600 text-slate-200 text-[11px] md:text-xs font-bold rounded-lg px-2 md:px-3 py-2 focus:outline-none focus:border-pink-500 transition-colors cursor-pointer shadow-inner">
+            <select id="filter-jft" aria-label="Filter Level JFT" onchange="renderGrid()" class="flex-1 sm:flex-none min-w-[130px] sm:min-w-0 bg-slate-800/80 border border-slate-600 text-slate-200 text-[11px] md:text-xs font-bold rounded-lg px-2 md:px-3 py-2 focus:outline-none focus:border-pink-500 transition-colors cursor-pointer shadow-inner">
                 <option value="all" id="opt-jft-all">Semua Level JFT</option>
                 <option value="a2">A2 / N4</option>
                 <option value="b1">B1 / N3</option>
