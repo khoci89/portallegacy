@@ -188,6 +188,12 @@ export function buildFamRows(famList, v) {
     if (g === '-') g = '';
     if (hub_jp === '-') hub_jp = '';
     if (p_jp === '-') p_jp = '';
+    // FIX pre-existing: finalGaji dipakai di template di bawah tapi tidak
+    // pernah didefinisikan di blok ini → ReferenceError saat render baris
+    // keluarga (CV gagal penuh / bagian hilang tergantung browser).
+    let finalGaji = window.isGood(g)
+      ? window.esc(String(g))
+      : '¥&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-';
 
     let finalHub = hub_jp ? hub.toUpperCase() + '  ' + hub_jp : hub.toUpperCase();
     let finalPek = p_jp

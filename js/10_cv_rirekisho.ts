@@ -148,7 +148,16 @@ export function renderCVAjaib(d, fotoUrl, waTarget) {
   };
   const getArr = (key) =>
     // @ts-expect-error JS→TS migration
-    window.mergeArrRiwayat(window.getPath(d, key), window.getPath(ai, key), keyOf[key]);
+    window.mergeArrRiwayat(
+      window.getPath(d, key),
+      window.getPath(ai, key),
+      keyOf[key],
+      // Normalisasi bentuk kunci SEKALI di titik gabung — akar perbaikan
+      // "nama sekolah/perusahaan/jabatan kosong di Rirekisho": isi CV AI
+      // pakai kunci sekolah_id/perusahaan_id/jabatan_id/… sedangkan builder
+      // membaca bentuk kanonikal. Dulu tiap gejala ditambal per-pembaca.
+      ((window as any).helpers_cv || {}).normalisasiRiwayat || null,
+    );
   let eduList = getArr('pendidikan');
   let jobList = getArr('pekerjaan');
   let famList = getArr('keluarga');

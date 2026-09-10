@@ -92,7 +92,14 @@ import './12_esign_match.ts';
 import './13_rincian_builder.ts';
 
 // CV helpers + builders + rirekisho (langkah 12)
-import { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat } from './helpers_cv.ts';
+import {
+  getPath,
+  isGood,
+  makeV,
+  fmtMonthYearJp,
+  mergeArrRiwayat,
+  normalisasiRiwayat,
+} from './helpers_cv.ts';
 import './10b_cv_builders.ts';
 import './10_cv_rirekisho.ts';
 
@@ -101,7 +108,7 @@ import './10_cv_rirekisho.ts';
 // SAJA: halaman standalone tidak butuh helper CV; helpers_cv tetap murni
 // sehingga unit-test node (vitest) tidak perlu stub window.
 registerSeamAliases(
-  { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat },
+  { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat, normalisasiRiwayat },
   { source: 'main:helpers_cv' },
 );
 

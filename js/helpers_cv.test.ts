@@ -5,7 +5,15 @@
 // makeV (v()): pencari data dengan prioritas d -> ai -> '-', plus fallback flat
 // uppercase legacy.
 import { describe, it, expect } from 'vitest';
-import { getPath, isGood, makeV, fmtMonthYearJp, asArr, mergeArrRiwayat } from './helpers_cv.ts';
+import {
+  getPath,
+  isGood,
+  makeV,
+  fmtMonthYearJp,
+  asArr,
+  mergeArrRiwayat,
+  normalisasiRiwayat,
+} from './helpers_cv.ts';
 
 describe('fmtMonthYearJp', () => {
   it('tahun polos -> 2012年', () => {
@@ -163,6 +171,136 @@ describe('mergeArrRiwayat — kolom master + isi CV AI tidak saling menutupi', (
     );
     expect(merged).toHaveLength(2);
     expect(merged[1].tingkat).toBe('SD');
+  });
+});
+
+describe('normalisasiRiwayat — satu sumber kunci, bukan alias per-pembaca', () => {
+  // Kunci form AI (ai_form.ts → arrayFields) vs kunci kanonikal builder CV.
+  it('pendidikan: sekolah_id (form AI) → sekolah (dibaca builder)', () => {
+    const out = normalisasiRiwayat(
+      [{ tingkat: 'SMA', sekolah_id: 'SMK WIYATI', jurusan_id: 'TKR', masuk: '2019', lulus: '2022' }],
+      'pendidikan',
+    );
+    expect(out[0].sekolah).toBe('SMK WIYATI');
+    expect(out[0].jurusan_id).toBe('TKR');
+    expect(out[0].masuk).toBe('2019');
+    expect(out[0].lulus).toBe('2022');
+  });
+
+  it('pekerjaan: perusahaan_id/jabatan_id (form AI) → perusahaan/jabatan', () => {
+    const out = normalisasiRiwayat(
+      [
+        {
+          perusahaan_id: 'utama bang',
+          jabatan_id: 'Kuli',
+          masuk: '2023',
+          keluar: '2026',
+          gaji: 'Rp 2.300.000',
+        },
+      ],
+      'pekerjaan',
+    );
+    expect(out[0].perusahaan).toBe('utama bang');
+    expect(out[0].jabatan).toBe('Kuli');
+    expect(out[0].masuk).toBe('2023');
+    expect(out[0].keluar).toBe('2026');
+    expect(out[0].gaji).toBe('Rp 2.300.000');
+  });
+
+  it('keluarga: hubungan_id/pekerjaan_id/umur (form AI) → bentuk kanonikal', () => {
+    const out = normalisasiRiwayat(
+      [{ hubungan_id: 'AYAH', nama: 'BAHRUDIN', umur: '55', pekerjaan_id: 'Tukang bangunan' }],
+      'keluarga',
+    );
+    expect(out[0].hubungan).toBe('AYAH');
+    expect(out[0].pekerjaan).toBe('Tukang bangunan');
+    expect(out[0].umur).toBe('55');
+    expect(out[0].usia).toBe('55');
+  });
+
+  it('nilai kanonikal yang SUDAH ada tidak pernah ditimpa (additive)', () => {
+    const out = normalisasiRiwayat(
+      [{ sekolah: 'ASLI', sekolah_id: 'LAIN' }],
+      'pendidikan',
+    );
+    expect(out[0].sekolah).toBe('ASLI');
+  });
+
+  it('string JSON array di-parse dulu (sumber AIDATAJSON)', () => {
+    const out = normalisasiRiwayat('[{"perusahaan_id":"Mbahmon bang"}]', 'pekerjaan');
+    expect(out[0].perusahaan).toBe('Mbahmon bang');
+  });
+
+  it('tipe tidak dikenal / kosong → dikembalikan tanpa perubahan', () => {
+    const src = [{ anu: 1 }];
+    expect(normalisasiRiwayat(src, 'tidak_ada')).toBe(src);
+    expect(normalisasiRiwayat(null, 'pendidikan')).toEqual([]);
+  });
+
+  // REGRESI inti (bug "nama kosong, tanggal tampil"): entri dari isi CV AI
+  // (AIDATAJSON) yang hanya punya kunci sekolah_id dinormalkan di DALAM
+  // mergeArrRiwayat, jadi builder selalu menerima kunci kanonikal — apa pun
+  // sumbernya.
+  it('mergeArrRiwayat + normalisasi: entri AI sekolah_id keluar dengan kunci sekolah', () => {
+    const keyEdu = (e) =>
+      String((e.tingkat || '') + (e.sekolah || e.sekolah_id || e.nama_sekolah || ''))
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '');
+    const merged = mergeArrRiwayat(
+      null, // kolom master kosong untuk slot ini
+      [{ tingkat: 'SMA/SMK', sekolah_id: 'SMK WIYATI', jurusan_id: 'TKR', masuk: '2019', lulus: '2022' }],
+      keyEdu,
+      (e) => normalisasiRiwayat(e, 'pendidikan'),
+    );
+    expect(merged).toHaveLength(1);
+    expect(merged[0].sekolah).toBe('SMK WIYATI'); // ← dulu undefined → kolom kosong
+    expect(merged[0].masuk).toBe('2019');
+    expect(merged[0].lulus).toBe('2022');
+  });
+
+  it('mergeArrRiwayat + normalisasi: entri AI pekerjaan perusahaan_id keluar dengan kunci perusahaan', () => {
+    const keyJob = (e) =>
+      String(
+        (e.perusahaan || e.perusahaan_id || e.nama_perusahaan || '') +
+          (e.jabatan || e.jabatan_id || ''),
+      )
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '');
+    const merged = mergeArrRiwayat(
+      null,
+      [{ perusahaan_id: 'utama bang', jabatan_id: 'Kuli', masuk: '2023', keluar: '2026', gaji: 'Rp 2.300.000' }],
+      keyJob,
+      (e) => normalisasiRiwayat(e, 'pekerjaan'),
+    );
+    expect(merged).toHaveLength(1);
+    expect(merged[0].perusahaan).toBe('utama bang'); // ← dulu undefined
+    expect(merged[0].jabatan).toBe('Kuli'); // ← dulu undefined
+  });
+
+  // Paritas backend: entri master (sudah kanonikal) menang saat kunci sama —
+  // dedupe berjalan SETELAH normalisasi jadi tidak dobel.
+  it('mergeArrRiwayat + normalisasi: sekolah (master) & sekolah_id (AI) sama = satu baris', () => {
+    const keyEdu = (e) =>
+      String((e.tingkat || '') + (e.sekolah || e.sekolah_id || e.nama_sekolah || ''))
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '');
+    const merged = mergeArrRiwayat(
+      [{ tingkat: 'SMA/SMK', sekolah: 'SMK WIYATI', jurusan_id: 'TKR' }],
+      [{ tingkat: 'SMA/SMK', sekolah_id: 'SMK WIYATI', jurusan_id: 'TKR' }],
+      keyEdu,
+      (e) => normalisasiRiwayat(e, 'pendidikan'),
+    );
+    expect(merged).toHaveLength(1); // dedupe menyatu — tidak dobel
+    expect(merged[0].sekolah).toBe('SMK WIYATI');
+  });
+
+  it('mergeArrRiwayat TANPA normalizer tetap jalan (kompatibel pemanggil lama)', () => {
+    const keyFam = (e) =>
+      String(e.nama || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '');
+    const merged = mergeArrRiwayat([{ nama: 'Bapak' }], [{ nama: 'Bapak' }], keyFam);
+    expect(merged).toHaveLength(1);
   });
 });
 

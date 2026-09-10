@@ -72,18 +72,90 @@ export function asArr(src) {
 // "dikit". Algoritma disamakan dengan mergeRiwayatArrays backend
 // (netlify/functions/_lib/actions-extra.js). keyOf menentukan kunci dedupe
 // per tipe (pendidikan/pekerjaan/keluarga); entri tanpa kunci valid dibuang.
-export function mergeArrRiwayat(srcA, srcB, keyOf) {
+export function mergeArrRiwayat(srcA, srcB, keyOf, normalize = null) {
   const seen = new Set();
   const out = [];
+  const norm = typeof normalize === 'function' ? normalize : null;
   const lists = [].concat(asArr(srcA), asArr(srcB));
   for (const e of lists) {
     if (!e || typeof e !== 'object') continue;
-    const k = keyOf ? keyOf(e) : JSON.stringify(e);
+    // Normalisasi bentuk kunci SEBELUM dedupe — kunci dedupe ikut menyatu
+    // (sekolah_id X dan sekolah X terdeteksi satu baris, bukan dobel).
+    const item = norm ? norm(e) : e;
+    const k = keyOf ? keyOf(item) : JSON.stringify(item);
     if (!k || seen.has(k)) continue;
     seen.add(k);
-    out.push(e);
+    out.push(item);
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// NORMALISATOR RIWAYAT TERPUSAT (akar perbaikan "benerin satu, lain rusak")
+// ---------------------------------------------------------------------------
+// Dua sumber data riwayat memakai DUA bentuk kunci berbeda:
+//   - Form AI (js/pages/ai_form.ts → arrayFields): sekolah_id / perusahaan_id /
+//     jabatan_id / hubungan_id / pekerjaan_id / masuk / keluar
+//   - Kolom master (buildMasterNested): sekolah / perusahaan / jabatan /
+//     hubungan / masuk / keluar (+ alias snake_case/camelCase lama)
+// Builder CV (10b_cv_builders.ts) membaca bentuk KANONIKAL (sekolah,
+// perusahaan, jabatan, …) — entri yang hanya punya kunci *_id (isi CV AI)
+// dirender KOSONG: tanggal & gaji tampil (kuncinya kebetulan sama), nama
+// sekolah/perusahaan/jabatan hilang. Dulu tiap gejala "ditambal" dengan
+// menambah alias di SATU pembaca → perbaikan bagian lain langsung rusak lagi.
+// Sekarang SEMUA entri riwayat dinormalkan SATU KALI di titik gabung
+// (renderCVAjaib → mergeArrRiwayat), SEBELUM dedupe — kunci dedupe ikut
+// menyatu (sekolah_id X dan sekolah X = satu baris, bukan dua).
+// Hanya MENGISI kunci kanonikal yang kosong dari alias — nilai yang sudah ada
+// TIDAK pernah ditimpa (additive; aman untuk semua konsumen lama).
+const RIWAYAT_ALIAS_MAP: Record<string, Record<string, string[]>> = {
+  pendidikan: {
+    sekolah: ['sekolah_id', 'nama_sekolah', 'namaSekolah'],
+    jurusan_id: ['jurusan'],
+    masuk: ['tahun_masuk', 'tahunMasuk'],
+    lulus: ['tahun_lulus', 'tahunLulus'],
+  },
+  pekerjaan: {
+    perusahaan: ['perusahaan_id', 'nama_perusahaan', 'namaPerusahaan', 'namaPt'],
+    jabatan: ['jabatan_id', 'posisi'],
+    masuk: ['tahun_masuk', 'tahunMasuk'],
+    keluar: ['tahun_keluar', 'tahunKeluar'],
+  },
+  keluarga: {
+    hubungan: ['hubungan_id'],
+    pekerjaan: ['pekerjaan_id'],
+    umur: ['usia'],
+    usia: ['umur'],
+  },
+};
+
+export function normalisasiRiwayat(src, tipe) {
+  const map = RIWAYAT_ALIAS_MAP[tipe];
+  // Tipe tidak dikenal → kembalikan sumber apa adanya (array/string/objek);
+  // null/undefined → [] (konsisten dengan asArr).
+  if (!map) return src === undefined || src === null ? [] : src;
+  // Objek tunggal (dipanggil mergeArrRiwayat per-entri) → bungkus lalu buka.
+  if (src && typeof src === 'object' && !Array.isArray(src)) {
+    return normalisasiRiwayat([src], tipe)[0] || src;
+  }
+  const list = asArr(src);
+  if (!list.length) return list;
+  return list.map((e) => {
+    if (!e || typeof e !== 'object') return e;
+    const out = Object.assign({}, e);
+    let changed = false;
+    for (const [target, aliases] of Object.entries(map)) {
+      if (isGood(out[target])) continue;
+      for (const alias of aliases) {
+        if (isGood(out[alias])) {
+          out[target] = String(out[alias]).trim();
+          changed = true;
+          break;
+        }
+      }
+    }
+    return changed ? out : e;
+  });
 }
 
 // Format Tahun & Bulan ala Jepang (2012年7月)
@@ -103,7 +175,15 @@ export function fmtMonthYearJp(str) {
   return dt.getFullYear() + '年' + (dt.getMonth() + 1) + '月';
 }
 
-export const helpers_cv = { getPath, isGood, makeV, fmtMonthYearJp, asArr, mergeArrRiwayat };
+export const helpers_cv = {
+  getPath,
+  isGood,
+  makeV,
+  fmtMonthYearJp,
+  asArr,
+  mergeArrRiwayat,
+  normalisasiRiwayat,
+};
 
 // BRIDGE ESM → classic (bundel): alias window.* (getPath/isGood/makeV/
 // fmtMonthYearJp/mergeArrRiwayat) diregistrasikan dari js/main.js via
