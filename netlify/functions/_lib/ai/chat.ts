@@ -7,6 +7,17 @@ import { translateItemsToJapanese } from './translate-lines';
 // pasangan di sini; tambahkan di registry supaya chat.ts & actions-master.ts
 // tidak pernah drift.
 import { JP_FIELD_PAIRS as AI_ID_JP_PAIRS, ARRAY_FIELD_PAIRS } from './jp-fields';
+// Registry silsilah & pasangan ID↔kanji — SATU SUMBER dengan dropdown form AI
+// (js/pages/ai_form.ts & js/silsilah.ts). Dipakai (a) menyuntik daftar nilai
+// sah ke prompt sistem Jeklin, (b) men-snap balasan AI ke nilai kanonikal.
+import {
+  KELUARGA_PAIRS,
+  PEKERJAAN_PAIRS,
+  JABATAN_PAIRS,
+  KENALAN_PAIRS,
+  GENDER_PAIRS,
+  snapId,
+} from '../../../../shared/silsilah';
 
 // ---------------------------------------------------------------------------
 // Auto-translate: isi field _jp yang kosong dari field _id (terjemahan ID→JP).
@@ -126,7 +137,124 @@ const AI_FORM_DATA_INSTRUCTION =
   'Reply chat cukup konfirmasi singkat bahwa terjemahan selesai; jangan menulis ulang isi teks kandidat di dalam reply.' +
   'Untuk array (pendidikan, pekerjaan, keluarga): kirim SEMUA baris, tiap baris memuat field _id yang disalin utuh DAN field _jp hasil terjemahan.';
 
-async function handleProcessAIChat(payload, sessionToken) {
+// ---------------------------------------------------------------------------
+// SILSILAH & NILAI SAH (2026-09-10) — disuntikkan ke prompt sistem supaya AI
+// mengembalikan nilai yang PERSIS sama dengan opsi dropdown form (js/silsilah.ts
+// — satu sumber dengan frontend, tidak pernah drift). Dulu AI bebas mengarang
+// "Kakak"/"kakak laki2" → dropdown tidak match, kanji tidak pernah pas.
+// ---------------------------------------------------------------------------
+const listNilai = (pairs: Array<[string, string]>) => pairs.map((p) => p[0]).join(', ');
+const SILSILAH_INSTRUCTION =
+  '\n\nNILAI SAH untuk field keluarga/kenalan/pekerjaan (WAJIB pakai PERSIS salah satu nilai berikut, ' +
+  'huruf kapital & tanda hubung sama persis — ini nilai dropdown form; field _jp pasangannya otomatis terisi sistem):\n' +
+  '- keluarga.hubungan_id (silsilah): ' +
+  listNilai(KELUARGA_PAIRS) +
+  '. ATURAN SILSILAH: hubungan keluarga WAJIB disebut gender — kandidat bilang "kakak laki-laki" pakai KAKAK LAKI-LAKI, ' +
+  '"kakak perempuan" pakai KAKAK PEREMPUAN, "adek cowok" pakai ADIK LAKI-LAKI, dst; KALAU gender anggota keluarga TIDAK jelas, ' +
+  'TANYAKAN dulu ke kandidat ("Kakaknya laki-laki atau perempuan?") SEBELUM mengisi — jangan menebak. ' +
+  'Gunakan KAKEK/NENEK untuk kakek/nenek, MERTUA LAKI-LAKI/PEREMPUAN untuk bapak/ibu mertua, IPAR untuk saudara ipar, ' +
+  'KEPONAKAN untuk keponakan, CUCU LAKI-LAKI/PEREMPUAN untuk cucu.\n' +
+  '- kenalan_jepang.hubungan_id: ' +
+  listNilai(KENALAN_PAIRS) +
+  '\n- keluarga.pekerjaan_id & kenalan_jepang.pekerjaan_id: ' +
+  listNilai(PEKERJAAN_PAIRS) +
+  '\n- pekerjaan.jabatan_id (posisi kandidat): ' +
+  listNilai(JABATAN_PAIRS) +
+  '\n- gender: ' +
+  listNilai(GENDER_PAIRS) +
+  '\nKonversi bahasa sehari-hari: "nyusu/om" = AYAH, "mama/bokap" = IBU, "kak laki" = KAKAK LAKI-LAKI, "adek cewek" = ADIK PEREMPUAN, ' +
+  '"goro-goro/bangunan" = TUKANG BANGUNAN, "orang kebun" = PETANI / PERKEBUNAN, "kerja pabrik" = BURUH PABRIK. ' +
+  'Kalau pekerjaan/jabatan kandidat TIDAK ada di daftar, pakai nilai terdekat yang paling mirip — JANGAN mengarang nilai baru.';
+
+// ---------------------------------------------------------------------------
+// Snap balasan AI ke registry: field terkait silsilah yang dikembalikan model
+// dipaksa ke nilai kanonikal (toleran: "kakak laki2" → KAKAK LAKI-LAKI) dan
+// field _jp pasangannya diisi kanji eksak dari registry bila masih kosong.
+// Ini jaring pengaman: walau model melanggar instruksi, data tetap valid.
+// ---------------------------------------------------------------------------
+function snapAiDataToRegistry(aiData: Record<string, any>): void {
+  if (!aiData || typeof aiData !== 'object') return;
+  // gender
+  const g = snapId(GENDER_PAIRS, String(aiData.identitas?.gender || ''));
+  if (g) aiData.identitas = Object.assign({}, aiData.identitas, { gender: g });
+  // keluarga (array)
+  if (Array.isArray(aiData.keluarga)) {
+    for (const row of aiData.keluarga) {
+      if (!row || typeof row !== 'object') continue;
+      const hub = snapId(KELUARGA_PAIRS, String(row.hubungan_id || ''));
+      if (hub) row.hubungan_id = hub;
+      if (row.hubungan_id && !String(row.hubungan_jp || '').trim()) {
+        const jp = KELUARGA_PAIRS.find((p) => p[0] === row.hubungan_id);
+        if (jp) row.hubungan_jp = jp[1];
+      }
+      const ker = snapId(PEKERJAAN_PAIRS, String(row.pekerjaan_id || ''));
+      if (ker) row.pekerjaan_id = ker;
+      if (row.pekerjaan_id && !String(row.pekerjaan_jp || '').trim()) {
+        const jp = PEKERJAAN_PAIRS.find((p) => p[0] === row.pekerjaan_id);
+        if (jp) row.pekerjaan_jp = jp[1];
+      }
+    }
+  }
+  // pekerjaan (array) — jabatan
+  if (Array.isArray(aiData.pekerjaan)) {
+    for (const row of aiData.pekerjaan) {
+      if (!row || typeof row !== 'object') continue;
+      const jab = snapId(JABATAN_PAIRS, String(row.jabatan_id || ''));
+      if (jab) row.jabatan_id = jab;
+      if (row.jabatan_id && !String(row.jabatan_jp || '').trim()) {
+        const jp = JABATAN_PAIRS.find((p) => p[0] === row.jabatan_id);
+        if (jp) row.jabatan_jp = jp[1];
+      }
+    }
+  }
+  // kenalan_jepang
+  if (aiData.kenalan_jepang && typeof aiData.kenalan_jepang === 'object') {
+    const ken = aiData.kenalan_jepang;
+    const hub = snapId(KENALAN_PAIRS, String(ken.hubungan_id || ''));
+    if (hub) ken.hubungan_id = hub;
+    if (ken.hubungan_id && !String(ken.hubungan_jp || '').trim()) {
+      const jp = KENALAN_PAIRS.find((p) => p[0] === ken.hubungan_id);
+      if (jp) ken.hubungan_jp = jp[1];
+    }
+    const ker = snapId(PEKERJAAN_PAIRS, String(ken.pekerjaan_id || ''));
+    if (ker) ken.pekerjaan_id = ker;
+    if (ken.pekerjaan_id && !String(ken.pekerjaan_jp || '').trim()) {
+      const jp = PEKERJAAN_PAIRS.find((p) => p[0] === ken.pekerjaan_id);
+      if (jp) ken.pekerjaan_jp = jp[1];
+    }
+  }
+}// ---------------------------------------------------------------------------
+// Guard helper untuk field snap (silsilah/pekerjaan/jabatan): tentukan nilai
+// _id final saat model mengirim JSON. Kontrak:
+//   - nilai kanonikal registry SELALU boleh mengisi field yang masih kosong
+//     (itu tujuan snap: "kakak laki2" → KAKAK LAKI-LAKI);
+//   - field silsisah/gender ketat: nilai di luar registry dibuang saat isi baru
+//     (kanji pasangan tidak akan pernah cocok);
+//   - pekerjaan/jabatan toleran teks bebas HANYA untuk pengisian baru;
+//   - field yang SUDAH terisi hanya berganti bila snap lama & baru bermakna
+//     sama (upgrade format "kakak laki2" → KAKAK LAKI-LAKI) — parafrase model
+//     tetap di-rollback (kontrak guard anti-parafrase tetap utuh).
+// ---------------------------------------------------------------------------
+function resolveSnapIdValue(
+  pairs: Array<[string, string]>,
+  origId: unknown,
+  inAi: unknown,
+  strict: boolean,
+): string {
+  const ai = String(inAi ?? '').trim();
+  const orig = String(origId ?? '').trim();
+  if (!ai || ai === orig) return String(origId ?? ''); // tidak ada perubahan dari model
+  const aiCanon = snapId(pairs, ai);
+  if (!orig) {
+    if (aiCanon) return aiCanon; // isi baru → bentuk kanonikal
+    return strict ? '' : ai; // silsilah tolak teks bebas; pekerjaan izinkan
+  }
+  const origCanon = snapId(pairs, orig);
+  if (aiCanon && origCanon && aiCanon === origCanon) return aiCanon; // upgrade format
+  return String(origId ?? ''); // sudah terisi & beda makna → rollback
+}
+
+ async function handleProcessAIChat(payload, sessionToken) {
   const p = payload || {};
   const flow = String(p.flow || 'master');
   // LOCK VIP (AGENTS.md §6): AI CV Master (flow=master) hanya untuk admin ATAU
@@ -204,7 +332,8 @@ async function handleProcessAIChat(payload, sessionToken) {
         'Kalau kandidat bertanya tentang data yang sudah ada, jawab pakai data tersebut. ' +
         'Tanyakan hanya data yang TIDAK tercantum di atas.'
       : '') +
-    AI_FORM_DATA_INSTRUCTION;
+    AI_FORM_DATA_INSTRUCTION +
+    SILSILAH_INSTRUCTION;
   try {
     const r = await geminiGenerate(system, history);
     const text = String(r && r.reply ? r.reply : '').trim();
@@ -250,6 +379,10 @@ async function handleProcessAIChat(payload, sessionToken) {
         setNested(aiData, jpPath.split('.'), jpVal);
       }
     }
+    // Snap nilai silsilah/pekerjaan ke registry SEBELUM guard _id — supaya
+    // _id yang di-snap (mis. "kakak laki2" → KAKAK LAKI-LAKI) dikenali guard
+    // sebagai nilai yang sah, dan kanji pasangan ikut terisi eksak.
+    if (modelSentJson && aiData) snapAiDataToRegistry(aiData);
     if (modelSentJson && aiData) {
       // Deterministic guard (hanya saat model mengirim JSON): _id apa pun yang
       // model kembalikan di aiData harus sama persis (byte-for-byte) dengan
@@ -257,9 +390,26 @@ async function handleProcessAIChat(payload, sessionToken) {
       // giliran translate, restore dari currentData. Hanya _jp yang boleh berubah.
       // Saat model balas prosa, aiData sengaja hanya berisi _jp hasil batch
       // (tanpa _id) — tidak ada _id yang bisa berubah, guard tidak dijalankan.
+      // Field silsilah/pekerjaan tidak di-guard byte-for-byte murni: nilai
+      // hasil snap boleh masuk — TAPI hanya bila kanonikal registry (lihat
+      // resolveSnapIdValue). Parafrase model atas nilai yang sudah terisi
+      // tetap di-rollback seperti field lain.
+      const SNAP_FIELDS = new Set(['gender', 'hubungan_id', 'pekerjaan_id', 'jabatan_id']);
+      const SNAP_STRICT = new Set(['gender', 'hubungan_id']);
       for (const pair of AI_ID_JP_PAIRS) {
+        const leaf = pair.idPath[pair.idPath.length - 1];
         const origId = getNested(p.currentData, pair.idPath);
         const inAi = getNested(aiData, pair.idPath);
+        if (SNAP_FIELDS.has(leaf)) {
+          const pairsFor = leaf === 'gender'
+            ? GENDER_PAIRS
+            : leaf === 'hubungan_id'
+              ? (pair.idPath[0] === 'kenalan_jepang' ? KENALAN_PAIRS : KELUARGA_PAIRS)
+              : PEKERJAAN_PAIRS;
+          const resolved = resolveSnapIdValue(pairsFor, origId, inAi, SNAP_STRICT.has(leaf));
+          if (resolved !== inAi) setNested(aiData, pair.idPath, resolved);
+          continue;
+        }
         if (inAi !== origId) setNested(aiData, pair.idPath, origId);
       }
       // Array fields guard: same contract — restore _id for each array row.
@@ -270,7 +420,15 @@ async function handleProcessAIChat(payload, sessionToken) {
           if (!arr[i]) continue;
           const origId = String((origArr[i] && origArr[i][afp.idKey]) || "");
           const inAi = String(arr[i][afp.idKey] || "");
-          if (inAi && inAi !== origId) arr[i][afp.idKey] = origId;
+          if (SNAP_FIELDS.has(afp.idKey)) {
+            const pairsFor = afp.idKey === 'hubungan_id'
+              ? KELUARGA_PAIRS
+              : afp.idKey === 'jabatan_id' ? JABATAN_PAIRS : PEKERJAAN_PAIRS;
+            const resolved = resolveSnapIdValue(pairsFor, origId, inAi, SNAP_STRICT.has(afp.idKey));
+            if (resolved !== inAi) arr[i][afp.idKey] = resolved;
+          } else if (inAi && inAi !== origId) {
+            arr[i][afp.idKey] = origId;
+          }
         }
       }
     }
