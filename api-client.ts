@@ -206,6 +206,96 @@ function getApiUrl(action) {
   return NETLIFY_API_BASE + '/' + (funcName || action);
 }
 
+// ---------------------------------------------------------------------------
+// PROACTIVE TOKEN REFRESH — fix "sesi expired" saat upload dari HP
+// ---------------------------------------------------------------------------
+// Token yang tersimpan di localStorage punya `exp` (epoch ms). Kalau token
+// kurang dari 10 menit dari expiry, refresh dulu SEBELUM mengirim request.
+// Ini mencegah "sesi expired" saat upload lambat di 3G atau tab background.
+const EXPIRY_THRESHOLD_MS = 10 * 60 * 1000; // 10 menit sebelum expiry
+let _refreshInFlight: Promise<boolean> | null = null; // dedupe concurrent refresh
+
+/** Decode base64url payload dari token tanpa verifikasi HMAC (client-side). */
+function decodeTokenPayload(token: string): Record<string, any> | null {
+  try {
+    const body = token.split('.')[0];
+    if (!body) return null;
+    // base64url → base64
+    const b64 = body.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+}
+
+/** Cek apakah token sudah expired atau akan expired dalam `thresholdMs`. */
+function isTokenExpiringSoon(token: string, thresholdMs = EXPIRY_THRESHOLD_MS): boolean {
+  if (!token) return true;
+  const payload = decodeTokenPayload(token);
+  if (!payload || !payload.exp) return false; // legacy token tanpa exp → jangan refresh
+  return Date.now() > payload.exp - thresholdMs;
+}
+
+/** Panggil refresh endpoint untuk dapat session token baru. */
+async function refreshSessionToken(role: 'admin' | 'kandidat'): Promise<boolean> {
+  const refreshKey = role === 'admin' ? 'asj_admin_refresh' : 'asj_kandidat_refresh';
+  const refreshToken = localStorage.getItem(refreshKey);
+  if (!refreshToken) return false;
+
+  const refreshAction = role === 'admin' ? 'refreshAdminSession' : 'refreshKandidatSession';
+  const funcName = NETLIFY_FUNCTIONS[refreshAction];
+  if (!funcName) return false;
+
+  try {
+    const res = await fetch(NETLIFY_API_BASE + '/' + funcName, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    const data = await res.json();
+    if (data && data.success && data.sessionToken) {
+      const sessionKey = role === 'admin' ? 'asj_admin_session' : 'asj_kandidat_session';
+      const loginKey = role === 'admin' ? 'asj_admin_login' : 'asj_kandidat_login';
+      localStorage.setItem(sessionKey, data.sessionToken);
+      localStorage.setItem(loginKey, 'sukses');
+      if (data.name) {
+        const nameKey = role === 'admin' ? 'asj_admin_name' : 'asj_kandidat_name';
+        localStorage.setItem(nameKey, data.name);
+      }
+      console.log('[api-client] Token ' + role + ' berhasil di-refresh (proactive)');
+      return true;
+    }
+  } catch (e) {
+    console.warn('[api-client] Refresh token gagal:', e);
+  }
+  return false;
+}
+
+/**
+ * Pastikan token yang akan dikirim masih valid. Kalau kurang dari 10 menit
+ * dari expiry, refresh dulu. Return true kalau token siap dipakai.
+ */
+async function ensureValidToken(sessionToken: string): Promise<boolean> {
+  if (!isTokenExpiringSoon(sessionToken)) return true;
+
+  // Deteksi role dari token payload.
+  const payload = decodeTokenPayload(sessionToken);
+  const role = payload?.role === 'admin' ? 'admin' : 'kandidat';
+
+  // Dedupe: kalau sudah ada refresh in-flight, tunggu hasil yang sama.
+  if (_refreshInFlight) return _refreshInFlight;
+
+  _refreshInFlight = (async () => {
+    try {
+      return await refreshSessionToken(role);
+    } finally {
+      _refreshInFlight = null;
+    }
+  })();
+  return _refreshInFlight;
+}
+
 // SWR-lite cache (Fase 3 langkah 16) — kurangi tarikan data berulang.
 // Tarikan data utama (getAppData / getAppConfig / getCandidatesPage) di-cache di sessionStorage dengan
 // TTL panjang (5 menit): repeat visits (reload halaman) akan memuat data instan (0 ms).
@@ -271,6 +361,23 @@ export async function callAPI(action, payload) {
         : localStorage.getItem('asj_kandidat_session')) || '';
   }
 
+  // PROACTIVE REFRESH: kalau token kurang dari 10 menit dari expiry,
+  // refresh dulu SEBELUM fetch supaya request tidak gagal "sesi expired".
+  // Hanya untuk action yang mengirim sessionToken (bukan login/daftar).
+  if (body.sessionToken && action !== 'logout' && action !== 'daftarKandidat' && action !== 'loginKandidat') {
+    try {
+      await ensureValidToken(String(body.sessionToken));
+      // Ambil token terbaru setelah refresh (localStorage sudah diupdate).
+      const isAdmin = localStorage.getItem('asj_admin_login') === 'sukses';
+      const freshToken = isAdmin
+        ? localStorage.getItem('asj_admin_session') || body.sessionToken
+        : localStorage.getItem('asj_kandidat_session') || body.sessionToken;
+      body.sessionToken = freshToken;
+    } catch (e) {
+      // Refresh gagal → lanjut dengan token lama (biarkan server reject)
+    }
+  }
+
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -291,22 +398,48 @@ export async function callAPI(action, payload) {
         'Server error (' + res.status + '): ' + (parsed.message || text.slice(0, 200));
     }
     if (parsed && parsed.sessionInvalid) {
-      // Pesan jelas sebelum reload — dulu ini diam-diam (data kosong /
-      // logout sendiri tanpa penjelasan). Sekarang beri tahu user sesi
-      // sudah berakhir dan minta login ulang.
+      // Coba refresh token SEBELUM clear session + reload.
+      // Kalau refresh berhasil → retry request sekali.
+      const isAdmin = localStorage.getItem('asj_admin_login') === 'sukses';
+      const isKandidat = localStorage.getItem('asj_kandidat_login') === 'sukses';
+      const role: 'admin' | 'kandidat' = isAdmin ? 'admin' : 'kandidat';
+      if ((isAdmin || isKandidat) && localStorage.getItem(role === 'admin' ? 'asj_admin_refresh' : 'asj_kandidat_refresh')) {
+        const refreshed = await refreshSessionToken(role);
+        if (refreshed) {
+          // Retry request dengan token baru.
+          const freshKey = role === 'admin' ? 'asj_admin_session' : 'asj_kandidat_session';
+          body.sessionToken = localStorage.getItem(freshKey) || '';
+          try {
+            const retryRes = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body),
+              redirect: 'follow',
+            });
+            const retryText = await retryRes.text();
+            let retryParsed;
+            try { retryParsed = JSON.parse(retryText); } catch { retryParsed = { success: false, message: retryText }; }
+            if (retryParsed && !retryParsed.sessionInvalid) {
+              // Retry berhasil → simpan cache & return.
+              if (CACHEABLE_READS.has(action) && retryParsed) {
+                const cacheKey = 'asj_cache_' + action + ':' + JSON.stringify(payload || []);
+                try { sessionStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), value: retryParsed })); } catch (e) {}
+              }
+              return retryParsed;
+            }
+          } catch (e) { /* retry gagal → fall through ke clear+reload */ }
+        }
+      }
+      // Refresh gagal atau tidak ada refresh token → clear & reload seperti sebelumnya.
       try {
-        const adminLogged = localStorage.getItem('asj_admin_login') === 'sukses';
-        const kandidatLogged = localStorage.getItem('asj_kandidat_login') === 'sukses';
-        const msg = adminLogged
+        const msg = isAdmin
           ? window.tr('ui.toast_admin_session_expired')
-          : kandidatLogged
+          : isKandidat
             ? window.tr('ui.toast_kandidat_session_expired')
             : 'Sesi berakhir, silakan login ulang.';
         if (typeof window.showToast === 'function') window.showToast(msg, 'error');
         else if (typeof alert === 'function') alert(msg);
-      } catch (e) {
-        /* toast opsional — jangan sampai memblokir reload */
-      }
+      } catch (e) {}
       localStorage.removeItem('asj_admin_login');
       localStorage.removeItem('asj_admin_session');
       localStorage.removeItem('asj_admin_name');
