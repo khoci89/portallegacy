@@ -76,7 +76,7 @@ export const ui = {
     default: 'デフォルト',
     default_stage_hint:
       'デフォルト: <i>契約署名</i>＋<i>COE発行</i> — 金額を入力するだけ。特別な場合は<i class="fas fa-times text-red-400"></i>で削除してください。',
-    doc10_ktp: '10. KTP（PDF）',
+    doc10_ktp: '10. KTP（PDF/JPG）',
     doc4_health: '4. 保健所健康診断書',
     doc7_mcu: '7. 健康診断書（PDF）',
     doc8_contract: '8. 雇用契約書（PDF）',

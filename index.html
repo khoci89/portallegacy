@@ -1168,10 +1168,10 @@
 // tersimpan — persis keluhan "upload kok gak berhasil" setelah tiap deploy).
 // Sekarang: kalau global-loader sedang tampil (upload/simpan berjalan),
 // tunggu sampai idle (maks 60x1s) sebelum reload.
-setTimeout(function(){var E="app-2fd0ac0a98";try{if(sessionStorage.getItem('asj_ac_v')===E)return;if(!navigator.serviceWorker||!navigator.serviceWorker.controller)return;caches.match("/assets/"+E+".js").then(function(r){if(!r){var tries=0;(function whenIdle(){var ld=document.getElementById('global-loader');var busy=ld&&ld.style.display&&ld.style.display!=='none';if(busy&&tries<60){tries++;setTimeout(whenIdle,1000);return}sessionStorage.setItem('asj_ac_v',E);console.log("[anti-cache] Stale SW, force reload...");navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(reg){reg.unregister()});location.reload(true)})})()}}).catch(function(){})}catch(e){}},2000);
+setTimeout(function(){var E="app-8cb287f88c";try{if(sessionStorage.getItem('asj_ac_v')===E)return;if(!navigator.serviceWorker||!navigator.serviceWorker.controller)return;caches.match("/assets/"+E+".js").then(function(r){if(!r){var tries=0;(function whenIdle(){var ld=document.getElementById('global-loader');var busy=ld&&ld.style.display&&ld.style.display!=='none';if(busy&&tries<60){tries++;setTimeout(whenIdle,1000);return}sessionStorage.setItem('asj_ac_v',E);console.log("[anti-cache] Stale SW, force reload...");navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(reg){reg.unregister()});location.reload(true)})})()}}).catch(function(){})}catch(e){}},2000);
 </script>
 <!-- /ANTI-CACHE -->
-<script src="/assets/app-2fd0ac0a98.js"></script>
+<script src="/assets/app-8cb287f88c.js"></script>
 <!-- Renderer dokumen lokal (xlsx/mammoth/pptx-preview) kini di-load LAZY saat
        preview pertama dibuka (lihat muatVendorLib di 02_init.js) — hemat 2.8MB
        download+parse di tiap load halaman. -->

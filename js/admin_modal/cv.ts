@@ -888,7 +888,7 @@ export async function downloadBiodataLengkap(wa) {
               ? data.pendidikan
                   .map(
                     (p) =>
-                      `<tr><th>${window.esc(p.tingkat || '-')}</th><td><strong>${window.esc(p.nama_sekolah || '-')}</strong><br><span style="color:#6b7280;font-size:12px;">Tahun: ${window.esc(p.tahun_masuk || '-')} - ${window.esc(p.tahun_lulus || '-')}</span></td></tr>`,
+                      `<tr><th>${window.esc(p.tingkat || '-')}</th><td><strong>${window.esc(p.nama_sekolah || p.sekolah_id || p.sekolah || '-')}</strong><br><span style="color:#6b7280;font-size:12px;">Tahun: ${window.esc(p.tahun_masuk || p.masuk || '-')} - ${window.esc(p.tahun_lulus || p.lulus || '-')}</span></td></tr>`,
                   )
                   .join('')
               : `<tr><td colspan="2" style="text-align:center; color:#9ca3af;">Tidak ada data pendidikan</td></tr>`
@@ -902,7 +902,7 @@ export async function downloadBiodataLengkap(wa) {
               ? data.pekerjaan
                   .map(
                     (p) =>
-                      `<tr><th>${window.esc(p.nama_perusahaan || '-')}</th><td><strong>${window.esc(p.posisi || '-')}</strong><br><span style="color:#6b7280;font-size:12px;">Masa Kerja: ${window.esc(p.bulan_masuk || '-')}/${window.esc(p.tahun_masuk || '-')} - ${window.esc(p.bulan_keluar || '-')}/${window.esc(p.tahun_keluar || '-')}</span></td></tr>`,
+                      `<tr><th>${window.esc(p.nama_perusahaan || p.perusahaan_id || p.perusahaan || '-')}</th><td><strong>${window.esc(p.posisi || p.jabatan_id || p.jabatan || '-')}</strong><br><span style="color:#6b7280;font-size:12px;">Masa Kerja: ${window.esc((p.bulan_masuk ? p.bulan_masuk+'/' : '') + (p.tahun_masuk || '') || p.masuk || '-')} - ${window.esc((p.bulan_keluar ? p.bulan_keluar+'/' : '') + (p.tahun_keluar || '') || p.keluar || '-')}</span></td></tr>`,
                   )
                   .join('')
               : `<tr><td colspan="2" style="text-align:center; color:#9ca3af;">Tidak ada data pengalaman kerja</td></tr>`
@@ -916,10 +916,22 @@ export async function downloadBiodataLengkap(wa) {
               ? data.keluarga
                   .map(
                     (p) =>
-                      `<tr><th>${window.esc(p.hubungan || '-')}</th><td>Nama: <strong>${window.esc(p.nama || '-')}</strong><br>Usia: ${window.esc(p.usia || '-')} tahun<br>Pekerjaan: ${window.esc(p.pekerjaan || '-')}</td></tr>`,
+                      `<tr><th>${window.esc(p.hubungan || p.hubungan_id || '-')}</th><td>Nama: <strong>${window.esc(p.nama || p.nama_id || '-')}</strong><br>Usia: ${window.esc(p.usia || p.umur || '-')} tahun<br>Pekerjaan: ${window.esc(p.pekerjaan || p.pekerjaan_id || '-')}</td></tr>`,
                   )
                   .join('')
               : `<tr><td colspan="2" style="text-align:center; color:#9ca3af;">Tidak ada data keluarga</td></tr>`
+          }
+        </table>
+
+        <div class="section-title">F. Kenalan di Jepang</div>
+        <table>
+          ${
+            (data.kenalan_jepang && (data.kenalan_jepang.nama_id || data.kenalan_jepang.nama_jp)) || data.KENALAN_DI_JEPANG_NAMA || data.kenalanNama
+              ? `<tr><th>Nama</th><td>${window.esc(data.kenalan_jepang?.nama_id || data.KENALAN_DI_JEPANG_NAMA || data.kenalanNama || '-')}</td></tr>
+                 <tr><th>Hubungan</th><td>${window.esc(data.kenalan_jepang?.hubungan_id || data.KENALAN_DI_JEPANG_HUBUNGAN || data.kenalanHubungan || '-')}</td></tr>
+                 <tr><th>Usia</th><td>${window.esc(data.kenalan_jepang?.usia || data.KENALAN_DI_JEPANG_USIA || data.kenalanUsia || '-')}</td></tr>
+                 <tr><th>Pekerjaan</th><td>${window.esc(data.kenalan_jepang?.pekerjaan_id || data.KENALAN_DI_JEPANG_PEKERJAAN || data.kenalanPekerjaan || '-')}</td></tr>`
+              : `<tr><td colspan="2" style="text-align:center; color:#9ca3af;">Tidak ada data kenalan di Jepang</td></tr>`
           }
         </table>
 

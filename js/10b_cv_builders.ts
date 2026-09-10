@@ -424,7 +424,7 @@ export function buildCvKertasA4(p) {
                 <!-- BLOK PENDIDIKAN -->
                 <tr><td colspan="7" class="bg-amber val-center">学歴 PENDIDIKAN</td></tr>
                 <tr>
-                    <td colspan="3" class="bg-amber val-center">期間 TAHUN</td>
+                    <td colspan="3" class="bg-amber val-center">期間 BULAN/TAHUN</td>
                     <td colspan="2" class="bg-amber val-center">学校名 NAMA SEKOLAH</td>
                     <td colspan="2" class="bg-amber val-center">専攻 JURUSAN</td>
                 </tr>
@@ -433,7 +433,7 @@ export function buildCvKertasA4(p) {
                 <!-- BLOK PENGALAMAN -->
                 <tr><td colspan="7" class="bg-amber val-center">職歴 PENGALAMAN KERJA </td></tr>
                 <tr>
-                    <td colspan="3" class="bg-amber val-center">期間 TAHUN</td>
+                    <td colspan="3" class="bg-amber val-center">期間 BULAN/TAHUN</td>
                     <td colspan="2" class="bg-amber val-center">会社名 NAMA PERUSAHAAN</td>
                     <td class="bg-amber val-center">職種 JENIS KERJA</td>
                     <td class="bg-amber val-center">月収/円 GAJI</td>

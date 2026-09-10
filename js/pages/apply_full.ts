@@ -696,7 +696,7 @@ window.onload = function () {
                   </div>
                   <button type="button" onclick="document.getElementById('extra_${idx}').click()" class="upload-btn" style="background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.2);">UPLOAD</button>
                 </div>
-                <input id="extra_${idx}" type="file" accept=".pdf" hidden onchange="handleExtraFile(this, ${idx})">
+                <input id="extra_${idx}" type="file" accept=".pdf,image/*" hidden onchange="handleExtraFile(this, ${idx})">
                 <div id="extraInfo_${idx}" class="file-name">Belum ada file dipilih</div>
                 <div id="extraWarn_${idx}" class="size-warn"><i class="fa-solid fa-circle-exclamation"></i> Gagal! Ukuran file melebihi 2 MB.</div>
               </div>

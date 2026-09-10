@@ -211,18 +211,12 @@ var IDENTITAS_PAIRS = {
   ],
 };
 // Peta pemakaian: fieldPath → pasangan (kartu identitas, bukan kartu riwayat).
-var FIELD_PAIRS = {
+var FIELD_PAIRS: Record<string, Array<any>> = {
   'identitas.gender': IDENTITAS_PAIRS.gender,
   'identitas.agama': IDENTITAS_PAIRS.agama,
   'identitas.golongan_darah': IDENTITAS_PAIRS.golongan_darah,
   'identitas.status_nikah': IDENTITAS_PAIRS.status_nikah,
-  'identitas.tangan_dominan': IDENTITAS_PAIRS.tangan_dominan,
-  'identitas.sim': [
-    ['TIDAK ADA', '無し'],
-    ['SIM A', '普通自動車'],
-    ['SIM B', '大型自動車'],
-    ['SIM C', '準中型自動車'],
-  ],
+  'fisik.tangan_dominan': IDENTITAS_PAIRS.tangan_dominan,
   'wawancara.riwayat_jepang': IDENTITAS_PAIRS.riwayat_jepang,
   'fisik.tahan_ac': IDENTITAS_PAIRS.ya_tidak,
   'medis.kacamata': IDENTITAS_PAIRS.ya_tidak,
@@ -237,6 +231,28 @@ var FIELD_PAIRS = {
   // Kenalan di Jepang: hubungan & pekerjaan berpasangan.
   'kenalan_jepang.hubungan_id': KENALAN_PAIRS,
   'kenalan_jepang.pekerjaan_id': PEKERJAAN_PAIRS,
+};
+
+// Ukuran dropdown (ID + JP): satu field kanonik menyimpan nilai ID, label
+// menampilkan ID + JP. Menurut user: "cukup 1 field yang memuat gabungan".
+var SEPATU_PAIRS: Array<[string, string]> = [
+  ['36', '36 (JP 23.0cm)'], ['37', '37 (JP 23.5cm)'], ['38', '38 (JP 24.0cm)'],
+  ['39', '39 (JP 24.5cm)'], ['40', '40 (JP 25.0cm)'], ['41', '41 (JP 25.5cm)'],
+  ['42', '42 (JP 26.0cm)'], ['43', '43 (JP 26.5cm)'], ['44', '44 (JP 27.0cm)'],
+  ['45', '45 (JP 27.5cm)'], ['46', '46 (JP 28.0cm)'],
+];
+var BAJU_PAIRS: Array<[string, string]> = [
+  ['S', 'S (JP S)'], ['M', 'M (JP M)'], ['L', 'L (JP L)'],
+  ['XL', 'XL (JP LL)'], ['XXL', 'XXL (JP 3L)'],
+];
+var TOPI_PAIRS: Array<[string, string]> = [
+  ['54', '54 (JP 54cm)'], ['56', '56 (JP 56cm)'], ['58', '58 (JP 58cm)'],
+  ['60', '60 (JP 60cm)'], ['62', '62 (JP 62cm)'],
+];
+var SIZE_FIELDS: Record<string, Array<[string, string]>> = {
+  'fisik.sepatu': SEPATU_PAIRS,
+  'fisik.baju': BAJU_PAIRS,
+  'fisik.topi': TOPI_PAIRS,
 };
 
 // Pencari pasangan (pairJpOf/pairIdOf) di-import dari js/silsilah.ts —
@@ -299,16 +315,16 @@ var arrayFields = {
     ['sekolah_jp', 'form.ai_f_sekolah_jp'],
     ['jurusan_id', 'form.ai_f_jurusan_id'],
     ['jurusan_jp', 'form.ai_f_jurusan_jp'],
-    ['masuk', 'form.ai_f_masuk', 'years'],
-    ['lulus', 'form.ai_f_lulus', 'years'],
+    ['masuk', 'form.ai_f_masuk', 'month-year'],
+    ['lulus', 'form.ai_f_lulus', 'month-year'],
   ],
   pekerjaan: [
     ['perusahaan_id', 'form.ai_f_perusahaan_id'],
     ['perusahaan_jp', 'form.ai_f_perusahaan_jp'],
     ['jabatan_id', 'form.ai_f_jabatan_id', 'select-pair', JABATAN_PAIRS],
     ['jabatan_jp', 'form.ai_f_jabatan_jp', 'select-pair', JABATAN_PAIRS],
-    ['masuk', 'form.ai_f_mulai', 'years'],
-    ['keluar', 'form.ai_f_selesai', 'years'],
+    ['masuk', 'form.ai_f_mulai', 'month-year'],
+    ['keluar', 'form.ai_f_selesai', 'month-year'],
     ['gaji', 'form.ai_f_gaji'],
   ],
   keluarga: [
@@ -347,6 +363,15 @@ function yearOptionsHtml(current: any) {
   // Nilai tahun lama di luar rentang tetap ditampilkan (tidak hilang).
   if (!found && String(current || '').trim() !== '') {
     html += '<option value="' + escapeHtml(String(current)) + '" selected>' + escapeHtml(String(current)) + '</option>';
+  }
+  return html;
+}
+
+function monthOptionsHtml(current: any) {
+  var html = '<option value="">' + window.tr('form.ai_f_pilih') + '</option>';
+  for (var m = 1; m <= 12; m++) {
+    var sm = m < 10 ? '0' + m : String(m);
+    html += '<option value="' + sm + '"' + (String(current) === sm ? ' selected' : '') + '>' + sm + '</option>';
   }
   return html;
 }
@@ -412,6 +437,8 @@ function enableManualPreview() {
       setByPath(latestCandidateData, fieldPaths[id], el.value);
       el.classList.add('border-sky-400');
       saveToLocal();
+      // Auto-fill umur saat tanggal lahir berubah.
+      if (id === 'f_tgllahir') syncUmurFromTglLahir();
     });
   });
 }
@@ -472,6 +499,162 @@ function enableStaticPairSelects() {
   });
 }
 var STATIC_PAIR_SELECTS: Record<string, any> = {};
+
+// ---------------------------------------------------------------------------
+// TANGGAL LAHIR → UMUR AUTO + NORMALISASI DATE INPUT
+// ---------------------------------------------------------------------------
+// Normalisasi berbagai format tanggal lahir ke YYYY-MM-DD untuk <input type="date">.
+function normalizeDateToIso(raw: string): string {
+  if (!raw) return '';
+  var s = String(raw).trim();
+  // Sudah YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // YYYY/MM/DD
+  var m2 = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (m2) return m2[1] + '-' + m2[2].padStart(2, '0') + '-' + m2[3].padStart(2, '0');
+  // DD/MM/YYYY atau MM/DD/YYYY
+  var m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (m) {
+    var a = Number(m[1]), b = Number(m[2]);
+    // MM/DD/YYYY: bulan > 12 tidak mungkin jadi bulan → DD/MM/YYYY
+    if (a > 12) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+    // DD/MM/YYYY: hari > 12 tidak mungkin jadi hari → MM/DD/YYYY
+    if (b > 12) return m[3] + '-' + m[1].padStart(2, '0') + '-' + m[2].padStart(2, '0');
+    // Keduanya ≤ 12 → asumsikan DD/MM/YYYY (format Indonesia default)
+    return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+  }
+  return ''; // format tidak dikenali → biarkan kosong
+}
+
+// Hitung umur dari tanggal lahir YYYY-MM-DD.
+function computeAge(isoDate: string): number {
+  if (!isoDate) return 0;
+  var parts = isoDate.split('-');
+  if (parts.length !== 3) return 0;
+  var y = Number(parts[0]), m = Number(parts[1]), d = Number(parts[2]);
+  if (!y || !m || !d) return 0;
+  var today = new Date();
+  var age = today.getFullYear() - y;
+  if (today.getMonth() + 1 < m || (today.getMonth() + 1 === m && today.getDate() < d)) age--;
+  return age >= 0 ? age : 0;
+}
+
+// Sinkronisasi umur dari field tgl lahir → f_umur.
+function syncUmurFromTglLahir() {
+  var tgllahir = getByPath(latestCandidateData, 'identitas.tgl_lahir');
+  var iso = normalizeDateToIso(String(tgllahir || ''));
+  if (iso) {
+    var age = computeAge(iso);
+    if (age > 0) {
+      setByPath(latestCandidateData, 'identitas.umur', String(age));
+      setValue('f_umur', String(age));
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// UKURAN SEPATU / BAJU / TOPI — DROPDOWN ID+JP
+// ---------------------------------------------------------------------------
+// Mengganti input ukuran dengan select yang menampilkan gabungan ID + JP.
+// Menyimpan nilai kanonik (ID saja) — JP hanya di label.
+function enableSizeSelects() {
+  Object.keys(SIZE_FIELDS).forEach(function (path) {
+    var id = Object.keys(fieldPaths).find(function (k) { return fieldPaths[k] === path; });
+    if (!id) return;
+    var orig = $(id);
+    if (!orig || orig.dataset.sizeBound) return;
+    // Jika sudah jadi pair select (FIELD_PAIRS), skip — tidak bentrok.
+    if (orig.dataset.pairBound) return;
+    orig.dataset.sizeBound = '1';
+    var pairs = SIZE_FIELDS[path];
+    var sel = document.createElement('select');
+    sel.className = orig.className;
+    sel.dataset.sizeSel = path;
+    sel.onchange = function () {
+      latestCandidateData = latestCandidateData && typeof latestCandidateData === 'object' ? latestCandidateData : {};
+      setByPath(latestCandidateData, path, (sel as HTMLSelectElement).value);
+      saveToLocal();
+    };
+    (sel as any).refreshSize = function () {
+      var cur = String(getByPath(latestCandidateData, path) || '').trim();
+      var html = '<option value="">' + window.tr('form.ai_f_pilih') + '</option>';
+      var found = cur === '';
+      for (var i = 0; i < pairs.length; i++) {
+        var val = pairs[i][0];
+        var lbl = pairs[i][1]; // sudah "ID (JP ...)"
+        if (cur === val) { found = true; }
+        html += '<option value="' + escapeHtml(val) + '"' + (cur === val ? ' selected' : '') + '>' + escapeHtml(lbl) + '</option>';
+      }
+      if (!found && cur) {
+        html += '<option value="' + escapeHtml(cur) + '" selected>' + escapeHtml(cur) + '</option>';
+      }
+      sel.innerHTML = html;
+    };
+    (sel as any).refreshSize();
+    orig.parentNode && orig.parentNode.replaceChild(sel, orig);
+    STATIC_PAIR_SELECTS[id] = { sel: sel, path: path, isSize: true };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// SIM & PASPOR — STATUS SELECT + KONDISIONAL NUMBER
+// ---------------------------------------------------------------------------
+function syncSimPasporVisibility() {
+  var pasporStatus = $('f_paspor_status') as HTMLSelectElement | null;
+  var pasporInput = $('f_paspor') as HTMLInputElement | null;
+  var simStatus = $('f_sim_status') as HTMLSelectElement | null;
+  var simInput = $('f_sim') as HTMLInputElement | null;
+  if (pasporStatus && pasporInput) {
+    var statusVal = pasporStatus.value || getByPath(latestCandidateData, 'identitas.paspor_status') || '';
+    pasporInput.style.display = statusVal === 'TIDAK ADA' ? 'none' : '';
+    if (statusVal === 'TIDAK ADA') { pasporInput.value = ''; setByPath(latestCandidateData, 'identitas.paspor', ''); }
+  }
+  if (simStatus && simInput) {
+    var statusVal = simStatus.value || getByPath(latestCandidateData, 'identitas.sim_status') || '';
+    simInput.style.display = statusVal === 'TIDAK ADA' ? 'none' : '';
+    if (statusVal === 'TIDAK ADA') { simInput.value = ''; setByPath(latestCandidateData, 'identitas.sim', ''); }
+  }
+}
+function enableSimPasporConditional() {
+  var pasporStatus = $('f_paspor_status') as HTMLSelectElement | null;
+  var pasporInput = $('f_paspor') as HTMLInputElement | null;
+  var simStatus = $('f_sim_status') as HTMLSelectElement | null;
+  var simInput = $('f_sim') as HTMLInputElement | null;
+
+  // Restore status dari data tersimpan.
+  if (pasporStatus) {
+    var savedPaspor = getByPath(latestCandidateData, 'identitas.paspor_status');
+    if (savedPaspor) pasporStatus.value = String(savedPaspor);
+    // Derive status dari nilai paspor jika belum ada status tersimpan.
+    if (!savedPaspor && pasporInput) {
+      var existing = getByPath(latestCandidateData, 'identitas.paspor');
+      pasporStatus.value = existing ? 'ADA' : 'TIDAK ADA';
+    }
+    pasporStatus.removeAttribute('readonly');
+    pasporStatus.onchange = function () {
+      latestCandidateData = latestCandidateData && typeof latestCandidateData === 'object' ? latestCandidateData : {};
+      setByPath(latestCandidateData, 'identitas.paspor_status', pasporStatus.value);
+      syncSimPasporVisibility();
+      saveToLocal();
+    };
+  }
+  if (simStatus) {
+    var savedSim = getByPath(latestCandidateData, 'identitas.sim_status');
+    if (savedSim) simStatus.value = String(savedSim);
+    if (!savedSim && simInput) {
+      var existingSim = getByPath(latestCandidateData, 'identitas.sim');
+      simStatus.value = existingSim ? 'ADA' : 'TIDAK ADA';
+    }
+    simStatus.removeAttribute('readonly');
+    simStatus.onchange = function () {
+      latestCandidateData = latestCandidateData && typeof latestCandidateData === 'object' ? latestCandidateData : {};
+      setByPath(latestCandidateData, 'identitas.sim_status', simStatus.value);
+      syncSimPasporVisibility();
+      saveToLocal();
+    };
+  }
+  syncSimPasporVisibility();
+}
 
 // Flush render tertunda saat interaksi teks selesai (input blur) — dropdown
 // tidak pernah ditimpa di tengah pemakaian.
@@ -667,10 +850,8 @@ export function initApp() {
   // updateFormUI pertama (dipasang sekali — idempotent via dataset.pairBound).
   enableStaticPairSelects();
   bindDeferredFlush();
-  // Select pasangan menggantikan input identitas/kenalan tertentu SEBELUM
-  // updateFormUI pertama (dipasang sekali — idempotent via dataset.pairBound).
-  enableStaticPairSelects();
-  bindDeferredFlush();
+  enableSizeSelects();
+  enableSimPasporConditional();
   enableManualPreview();
   window.callAPI('getAppData', ['public']).then(function(res) {
     if (res && res.dropdowns) {
@@ -1023,6 +1204,11 @@ function setValue(id, val) {
   var el = $(id);
   if (!el) return;
   var nextValue = val === undefined || val === null ? '' : String(val);
+  // Normalisasi tanggal lahir ke YYYY-MM-DD untuk <input type="date">.
+  if (id === 'f_tgllahir' && nextValue) {
+    var iso = normalizeDateToIso(nextValue);
+    if (iso) nextValue = iso;
+  }
   if (el.value === nextValue) return;
   el.value = nextValue;
   el.classList.add('border-amber-500', 'bg-amber-900/30');
@@ -1207,6 +1393,18 @@ function renderItemField(type, index, item, definition) {
       '</select></div>'
     );
   }
+  if (ctrl === 'month-year') {
+    var val = String(item[field] || '').trim();
+    var parts = val.split('-');
+    var yr = parts[0] || val;
+    var mo = parts[1] || '';
+    if (yr.length > 4) { yr = val; mo = ''; }
+    
+    var yrHtml = '<select class="input-micro" style="width: 55%; display: inline-block; margin-right: 2%;" onchange="var m=this.nextElementSibling.value; updateArrayField(\'' + type + '\',' + index + ',\'' + field + '\', this.value + (this.value && m ? \'-\' + m : \'\'))">' + yearOptionsHtml(yr) + '</select>';
+    var moHtml = '<select class="input-micro" style="width: 43%; display: inline-block;" onchange="var y=this.previousElementSibling.value; updateArrayField(\'' + type + '\',' + index + ',\'' + field + '\', (y ? y : \'\') + (y && this.value ? \'-\' + this.value : \'\'))">' + monthOptionsHtml(mo) + '</select>';
+
+    return cellOpen + yrHtml + moHtml + '</div>';
+  }
   if (ctrl === 'datalist') {
     return (
       cellOpen +
@@ -1351,11 +1549,18 @@ export function updateFormUI() {
     if (pairSel) {
       // Field sudah jadi select pasangan — refresh opsinya dari data, bukan
       // setValue (yang menulis .value pada input readonly yang sudah diganti).
-      (pairSel.sel as any).refreshPairs();
+      if (pairSel.isSize) {
+        (pairSel.sel as any).refreshSize();
+      } else {
+        (pairSel.sel as any).refreshPairs();
+      }
       return;
     }
     setValue(id, getByPath(latestCandidateData, fieldPaths[id]));
   });
+  // Sinkronisasi umur dari tanggal lahir + visibility SIM/Paspor.
+  syncUmurFromTglLahir();
+  syncSimPasporVisibility();
   renderEditableArray('pendidikan', 'c_pendidikan');
   renderEditableArray('pekerjaan', 'c_pekerjaan');
   renderEditableArray('keluarga', 'c_keluarga');
@@ -1554,7 +1759,7 @@ export async function saveToDatabase() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + window.tr('form.ai_saving_db') + '…';
 
   // Guard ekstensi: cek SEMUA file dokumen SEBELUM kirim — format baku
-  // (2026-08-12, rev): JFT/SSW/ijazah/UNIV wajib PDF; KTP/KK boleh foto HP
+  // (2026-09-10, rev): JFT/SSW wajib PDF; KTP/KK/ijazah/UNIV boleh foto HP
   // (JPG/PNG — otomatis di-downscale handleDocUpload) ATAU PDF. Pas foto
   // sudah dijamin JPG/PNG oleh compressImage (canvas). Sinkron dengan
   // aturan per-prefix di storage-helper.ts.
@@ -1563,10 +1768,10 @@ export async function saveToDatabase() {
     { f: currentSswFile, t: 'doc' },
     { f: currentKtpFile, t: 'foto' },
     { f: currentKkFile, t: 'foto' },
-    { f: currentIjazahSdFile, t: 'doc' },
-    { f: currentIjazahSmpFile, t: 'doc' },
-    { f: currentIjazahSmaFile, t: 'doc' },
-    { f: currentUnivFile, t: 'doc' },
+    { f: currentIjazahSdFile, t: 'foto' },
+    { f: currentIjazahSmpFile, t: 'foto' },
+    { f: currentIjazahSmaFile, t: 'foto' },
+    { f: currentUnivFile, t: 'foto' },
   ].filter(function (x) {
     return !!x.f;
   });

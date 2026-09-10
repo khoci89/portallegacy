@@ -78,7 +78,7 @@ export const ui = {
     default: 'Default',
     default_stage_hint:
       'Default: <i>TTD KONTRAK</i> + <i>COE TERBIT</i> — tinggal isi harga. Hapus lewat <i class="fas fa-times text-red-400"></i> untuk kasus khusus.',
-    doc10_ktp: '10. KTP (PDF)',
+    doc10_ktp: '10. KTP (PDF/JPG)',
     doc4_health: '4. SEHAT PUSKESMAS',
     doc7_mcu: '7. MCU (Scan PDF)',
     doc8_contract: '8. KONTRAK KERJA (PDF)',

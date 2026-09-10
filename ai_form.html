@@ -129,8 +129,8 @@
           <div><label class="label-micro" data-lang="form.ai_panggilan">Panggilan</label><input type="text" id="f_panggilan" class="input-micro" readonly></div>
           <div><label class="label-micro" data-lang="form.ai_p_katakana">P. Katakana</label><input type="text" id="f_panggilan_katakana" class="input-micro text-pink-300 font-bold" readonly></div>
           <div><label class="label-micro" data-lang="form.ai_tmp_lahir">Tmp Lahir</label><input type="text" id="f_tmplahir" class="input-micro" readonly></div>
-          <div><label class="label-micro" data-lang="form.ai_tgl_lahir">Tgl Lahir</label><input type="text" id="f_tgllahir" class="input-micro" readonly></div>
-          <div><label class="label-micro" data-lang="form.ai_umur">Umur</label><input type="text" id="f_umur" class="input-micro text-center" readonly></div>
+          <div><label class="label-micro" data-lang="form.ai_tgl_lahir">Tgl Lahir</label><input type="date" id="f_tgllahir" class="input-micro" readonly></div>
+          <div><label class="label-micro" data-lang="form.ai_umur">Umur</label><div class="relative"><input type="text" id="f_umur" class="input-micro text-center pr-6" readonly><span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none">thn</span></div></div>
           <div><label class="label-micro" data-lang="form.ai_gender">Gender</label><input type="text" id="f_gender" class="input-micro text-center" readonly></div>
           <div><label class="label-micro" data-lang="form.ai_agama">Agama</label><input type="text" id="f_agama" class="input-micro text-center" readonly></div>
           <div><label class="label-micro" data-lang="form.ai_goldar">Gol. Darah</label><input type="text" id="f_goldar" class="input-micro text-center" readonly></div>
@@ -141,8 +141,8 @@
           <div><label class="label-micro" data-lang="form.ai_hp">No. HP (WA)</label><input type="text" id="f_hp" class="input-micro" readonly></div>
           <div><label class="label-micro" data-lang="form.ai_hp_darurat">HP Darurat</label><input type="text" id="f_hpdarurat" class="input-micro" readonly></div>
           <div class="col-span-2 md:col-span-2"><label class="label-micro" data-lang="form.ai_ktp">NIK KTP</label><input type="text" id="f_ktp" class="input-micro" readonly></div>
-          <div class="col-span-2 md:col-span-2"><label class="label-micro" data-lang="form.ai_paspor">No. Paspor</label><input type="text" id="f_paspor" class="input-micro" readonly></div>
-          <div><label class="label-micro" data-lang="form.ai_sim">SIM</label><input type="text" id="f_sim" class="input-micro" readonly></div>
+          <div class="col-span-2 md:col-span-2"><label class="label-micro" data-lang="form.ai_paspor">No. Paspor</label><div class="flex gap-1"><select id="f_paspor_status" class="input-micro" style="width:38%" readonly><option value="">—</option><option value="ADA">ADA (有)</option><option value="TIDAK ADA">TIDAK ADA (無)</option></select><input type="text" id="f_paspor" class="input-micro" style="width:62%" readonly placeholder="Nomor paspor…"></div></div>
+          <div><label class="label-micro" data-lang="form.ai_sim">SIM</label><div class="flex gap-1"><select id="f_sim_status" class="input-micro" style="width:42%" readonly><option value="">—</option><option value="ADA">ADA (有)</option><option value="TIDAK ADA">TIDAK ADA (無)</option></select><input type="text" id="f_sim" class="input-micro" style="width:58%" readonly placeholder="Nomor SIM…"></div></div>
         </div>
       </div>
 
@@ -150,8 +150,8 @@
         <div class="bg-slate-900/40 border border-slate-800 rounded-lg p-3 shadow">
           <h2 class="section-title text-amber-400" data-lang="form.ai_fisik"><i class="fas fa-child mr-1"></i> 2. Fisik & Ukuran</h2>
           <div class="grid grid-cols-3 gap-2">
-            <div><label class="label-micro" data-lang="form.ai_tb">Tinggi (cm)</label><input type="text" id="f_tb" class="input-micro text-center" readonly></div>
-            <div><label class="label-micro" data-lang="form.ai_bb">Berat (kg)</label><input type="text" id="f_bb" class="input-micro text-center" readonly></div>
+            <div><label class="label-micro" data-lang="form.ai_tb">Tinggi</label><div class="relative"><input type="text" id="f_tb" class="input-micro text-center pr-6" readonly><span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none">cm</span></div></div>
+            <div><label class="label-micro" data-lang="form.ai_bb">Berat</label><div class="relative"><input type="text" id="f_bb" class="input-micro text-center pr-6" readonly><span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none">kg</span></div></div>
             <div><label class="label-micro" data-lang="form.ai_tangan">Tgn Dominan</label><input type="text" id="f_tangan" class="input-micro text-center" readonly></div>
             <div><label class="label-micro" data-lang="form.ai_sepatu">Uk. Sepatu</label><input type="text" id="f_sepatu" class="input-micro text-center" readonly></div>
             <div><label class="label-micro" data-lang="form.ai_baju">Uk. Baju</label><input type="text" id="f_baju" class="input-micro text-center" readonly></div>
@@ -193,21 +193,21 @@
         <div class="mb-2"><label class="label-micro text-sky-400 font-bold" data-lang="form.ai_riwayat_jepang">Pernah ke Jepang sebelumnya?</label><input type="text" id="f_riwayatjepang" class="input-micro w-1/3" readonly></div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div class="space-y-2">
-             <div><label class="label-micro" data-lang="form.ai_promosi">Promosi Diri / Perkenalan</label><textarea id="f_promo_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_promo_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
-             <div><label class="label-micro">Kelebihan / 長所</label><textarea id="f_lebih_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_lebih_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
-             <div><label class="label-micro">Kekurangan / 短所</label><textarea id="f_kurang_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_kurang_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
-              <div><label class="label-micro" data-lang="form.ai_hobi">Hobi</label><textarea id="f_hobi_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_hobi_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
-              <div><label class="label-micro" data-lang="form.ai_keahlian">Keahlian Khusus</label><textarea id="f_keahlian_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_keahlian_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
+             <div><label class="label-micro" data-lang="form.ai_promosi">Promosi Diri / Perkenalan</label><div class="text-[9px] text-slate-500 italic leading-tight mb-0.5" data-lang="form.ai_promosi_helper">Ceritakan diri Anda singkat: sifat, kebiasaan, dan hal yang ingin Anda tunjukkan kepada perusahaan.</div><textarea id="f_promo_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_promo_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
+             <div><label class="label-micro" data-lang="form.ai_kelebihan">Kelebihan / 長所</label><div class="text-[9px] text-slate-500 italic leading-tight mb-0.5" data-lang="form.ai_kelebihan_helper">Tuliskan poin baik Anda beserta contoh nyata di kegiatan sehari-hari / kerja.</div><textarea id="f_lebih_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_lebih_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
+             <div><label class="label-micro" data-lang="form.ai_kekurangan">Kekurangan / 短所</label><div class="text-[9px] text-slate-500 italic leading-tight mb-0.5" data-lang="form.ai_kekurangan_helper">Tuliskan kekurangan Anda beserta cara mengatasinya.</div><textarea id="f_kurang_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_kurang_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
+              <div><label class="label-micro" data-lang="form.ai_hobi">Hobi & Kegiatan</label><div class="text-[9px] text-slate-500 italic leading-tight mb-0.5" data-lang="form.ai_hobi_helper">Tuliskan hobi aktivitas maupun non-aktivitas beserta manfaatnya untuk Anda. Contoh: Memancing — melatih kesabaran & fokus.</div><textarea id="f_hobi_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_hobi_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
+              <div><label class="label-micro" data-lang="form.ai_keahlian">Keahlian Khusus</label><div class="text-[9px] text-slate-500 italic leading-tight mb-0.5" data-lang="form.ai_keahlian_helper">Contoh: mengelas, mengoperasikan mesin, SIM, dll. Kosongkan jika tidak ada.</div><textarea id="f_keahlian_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_keahlian_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
           </div>
           <div class="space-y-2">
-             <div><label class="label-micro" data-lang="form.ai_motivasi">Motivasi ke Jepang</label><textarea id="f_moti_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_moti_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
-             <div><label class="label-micro" data-lang="form.ai_alasan">Alasan Memilih Bidang Ini</label><textarea id="f_alasan_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_alasan_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
-             <div><label class="label-micro" data-lang="form.ai_rencana">Rencana Setelah Pulang ke ID</label><textarea id="f_pulang_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_pulang_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
-             <div><label class="label-micro" data-lang="form.ai_keinginan">Keinginan Pribadi (Target)</label><textarea id="f_keinginan_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_keinginan_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
-             <div><label class="label-micro" data-lang="form.ai_tujuan">Tujuan Kerja di Jepang</label><textarea id="f_tujuan_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_tujuan_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
+             <div><label class="label-micro" data-lang="form.ai_motivasi">Motivasi ke Jepang</label><div class="text-[9px] text-slate-500 italic leading-tight mb-0.5" data-lang="form.ai_motivasi_helper">Alasan utama Anda ingin bekerja / belajar di Jepang.</div><textarea id="f_moti_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_moti_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
+             <div><label class="label-micro" data-lang="form.ai_alasan">Alasan Memilih Bidang Kerja</label><div class="text-[9px] text-slate-500 italic leading-tight mb-0.5" data-lang="form.ai_alasan_helper">Jelaskan mengapa Anda memilih bidang kerja ini dan apa yang membuat Anda tertarik.</div><textarea id="f_alasan_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_alasan_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
+             <div><label class="label-micro" data-lang="form.ai_rencana">Rencana Setelah Pulang dari Jepang</label><div class="text-[9px] text-slate-500 italic leading-tight mb-0.5" data-lang="form.ai_rencana_helper">Apa yang ingin Anda lakukan setelah kembali dari Jepang? Contoh: membuka usaha, membangun rumah.</div><textarea id="f_pulang_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_pulang_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
+             <div><label class="label-micro" data-lang="form.ai_keinginan">Keinginan Pribadi (Target)</label><div class="text-[9px] text-slate-500 italic leading-tight mb-0.5" data-lang="form.ai_keinginan_helper">Target atau impian pribadi Anda selama & setelah di Jepang.</div><textarea id="f_keinginan_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_keinginan_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
+             <div><label class="label-micro" data-lang="form.ai_tujuan">Tujuan Kerja di Jepang</label><div class="text-[9px] text-slate-500 italic leading-tight mb-0.5" data-lang="form.ai_tujuan_helper">Apa tujuan utama Anda bekerja di Jepang? Contoh: mencari pengalaman lebih luas.</div><textarea id="f_tujuan_id" rows="1" class="input-micro resize-none mb-0.5" readonly placeholder="ID…"></textarea><textarea id="f_tujuan_jp" rows="1" class="input-micro text-purple-300 font-bold resize-none" readonly placeholder="JP…"></textarea></div>
              <div class="grid grid-cols-3 gap-2">
-               <div><label class="label-micro" data-lang="form.ai_lama">Lama di Jepang</label><input type="text" id="f_lama" class="input-micro text-center" readonly></div>
-               <div><label class="label-micro" data-lang="form.ai_gaji">Gaji (Yen)</label><input type="text" id="f_gaji_yen" class="input-micro text-center text-amber-300" readonly></div>
+               <div><label class="label-micro" data-lang="form.ai_lama">Lama di Jepang</label><div class="relative"><input type="text" id="f_lama" class="input-micro text-center pr-6" readonly><span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none">thn</span></div></div>
+               <div><label class="label-micro" data-lang="form.ai_gaji">Gaji</label><div class="relative"><input type="text" id="f_gaji_yen" class="input-micro text-center text-amber-300 pr-8" readonly><span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none">yen</span></div></div>
                <div><label class="label-micro" data-lang="form.ai_tabungan">Tabungan</label><input type="text" id="f_tabungan" class="input-micro text-center text-amber-300" readonly></div>
              </div>
           </div>
@@ -273,7 +273,7 @@
           <div><label class="label-micro" data-lang="form.ai_hubungan">Hubungan (JP)</label><input type="text" id="f_kenalan_hub_jp" class="input-micro text-pink-300 font-bold" readonly></div>
           <div><label class="label-micro" data-lang="form.ai_pekerjaan">Pekerjaan (ID)</label><input type="text" id="f_kenalan_kerja_id" class="input-micro" readonly></div>
           <div><label class="label-micro" data-lang="form.ai_pekerjaan">Pekerjaan (JP)</label><input type="text" id="f_kenalan_kerja_jp" class="input-micro text-pink-300 font-bold" readonly></div>
-          <div><label class="label-micro" data-lang="form.ai_usia">Usia</label><input type="text" id="f_kenalan_usia" class="input-micro" readonly></div>
+          <div><label class="label-micro" data-lang="form.ai_usia">Usia</label><div class="relative"><input type="text" id="f_kenalan_usia" class="input-micro pr-6" readonly><span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none">thn</span></div></div>
           <div class="col-span-2 md:col-span-4 mt-1">
             <div class="grid grid-cols-2 gap-2">
                <div><label class="label-micro" data-lang="form.ai_alamat_kenalan">Alamat di Jepang (ID/Romaji)</label><input type="text" id="f_kenalan_alamat_id" class="input-micro" readonly></div>
@@ -331,32 +331,32 @@
         <div class="bg-slate-900/60 border border-slate-700 p-3 rounded-lg shadow flex items-center gap-3">
           <div class="w-10 h-10 rounded bg-violet-600 flex items-center justify-center text-white text-lg flex-shrink-0"><i class="fas fa-graduation-cap"></i></div>
           <div class="flex-1 overflow-hidden">
-            <label class="block text-xs font-bold text-violet-400 mb-0.5" data-lang="form.ai_doc_sd">IJAZAH SD (PDF)</label>
-            <input type="file" accept=".pdf" class="w-full text-[9px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" onchange="handleDocUpload(event, 'ijazahSd')">
+            <label class="block text-xs font-bold text-violet-400 mb-0.5" data-lang="form.ai_doc_sd">IJAZAH SD (PDF/JPG/PNG)</label>
+            <input type="file" accept=".pdf,image/*" class="w-full text-[9px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" onchange="handleDocUpload(event, 'ijazahSd')">
             <div id="status_ijazahSd" class="text-[9px] text-emerald-400 mt-1 hidden font-bold whitespace-nowrap overflow-hidden text-ellipsis"></div>
           </div>
         </div>
         <div class="bg-slate-900/60 border border-slate-700 p-3 rounded-lg shadow flex items-center gap-3">
           <div class="w-10 h-10 rounded bg-sky-600 flex items-center justify-center text-white text-lg flex-shrink-0"><i class="fas fa-graduation-cap"></i></div>
           <div class="flex-1 overflow-hidden">
-            <label class="block text-xs font-bold text-sky-400 mb-0.5" data-lang="form.ai_doc_smp">IJAZAH SMP (PDF)</label>
-            <input type="file" accept=".pdf" class="w-full text-[9px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" onchange="handleDocUpload(event, 'ijazahSmp')">
+            <label class="block text-xs font-bold text-sky-400 mb-0.5" data-lang="form.ai_doc_smp">IJAZAH SMP (PDF/JPG/PNG)</label>
+            <input type="file" accept=".pdf,image/*" class="w-full text-[9px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" onchange="handleDocUpload(event, 'ijazahSmp')">
             <div id="status_ijazahSmp" class="text-[9px] text-emerald-400 mt-1 hidden font-bold whitespace-nowrap overflow-hidden text-ellipsis"></div>
           </div>
         </div>
         <div class="bg-slate-900/60 border border-slate-700 p-3 rounded-lg shadow flex items-center gap-3">
           <div class="w-10 h-10 rounded bg-teal-600 flex items-center justify-center text-white text-lg flex-shrink-0"><i class="fas fa-graduation-cap"></i></div>
           <div class="flex-1 overflow-hidden">
-            <label class="block text-xs font-bold text-teal-400 mb-0.5" data-lang="form.ai_doc_sma">IJAZAH SMA (PDF)</label>
-            <input type="file" accept=".pdf" class="w-full text-[9px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" onchange="handleDocUpload(event, 'ijazahSma')">
+            <label class="block text-xs font-bold text-teal-400 mb-0.5" data-lang="form.ai_doc_sma">IJAZAH SMA (PDF/JPG/PNG)</label>
+            <input type="file" accept=".pdf,image/*" class="w-full text-[9px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" onchange="handleDocUpload(event, 'ijazahSma')">
             <div id="status_ijazahSma" class="text-[9px] text-emerald-400 mt-1 hidden font-bold whitespace-nowrap overflow-hidden text-ellipsis"></div>
           </div>
         </div>
         <div class="bg-slate-900/60 border border-slate-700 p-3 rounded-lg shadow flex items-center gap-3">
           <div class="w-10 h-10 rounded bg-indigo-600 flex items-center justify-center text-white text-lg flex-shrink-0"><i class="fas fa-university"></i></div>
           <div class="flex-1 overflow-hidden">
-            <label class="block text-xs font-bold text-indigo-400 mb-0.5" data-lang="form.ai_doc_univ">IJAZAH UNIVERSITAS (PDF)</label>
-            <input type="file" accept=".pdf" class="w-full text-[9px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" onchange="handleDocUpload(event, 'univ')">
+            <label class="block text-xs font-bold text-indigo-400 mb-0.5" data-lang="form.ai_doc_univ">IJAZAH UNIVERSITAS (PDF/JPG/PNG)</label>
+            <input type="file" accept=".pdf,image/*" class="w-full text-[9px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" onchange="handleDocUpload(event, 'univ')">
             <div id="status_univ" class="text-[9px] text-emerald-400 mt-1 hidden font-bold whitespace-nowrap overflow-hidden text-ellipsis"></div>
           </div>
         </div>

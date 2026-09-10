@@ -1,6 +1,7 @@
 import { ALL_CANDIDATES, currentKandidatWa, isAdmin } from './init/state.ts';
 import { ensureAllCandidates } from './api/candidates.ts';
 import { registerSeamAliases } from './core/bridge.ts';
+import { normalisasiRiwayat } from './helpers_cv.ts';
 // ESM (Fase 3 langkah 12): modul ES — pemakai classic/bundel via window.*
 // (render/candidate.js onclick "bukaPreviewCV_Admin", HTML onclick
 // "bukaPreviewCV", onclick "cetakCVRirekisho"). Helper dari helpers_cv.js &
@@ -156,7 +157,11 @@ export function renderCVAjaib(d, fotoUrl, waTarget) {
       // "nama sekolah/perusahaan/jabatan kosong di Rirekisho": isi CV AI
       // pakai kunci sekolah_id/perusahaan_id/jabatan_id/… sedangkan builder
       // membaca bentuk kanonikal. Dulu tiap gejala ditambal per-pembaca.
-      ((window as any).helpers_cv || {}).normalisasiRiwayat || null,
+      // Wrapper (e)=>normalisasiRiwayat(e, key) WAJIB: kontrak
+      // normalisasiRiwayat(src, tipe) butuh tipe untuk memilih map alias —
+      // dulu fungsi dipass mentah sehingga mergeArrRiwayat memanggil
+      // norm(e) tanpa tipe → map undefined → no-op diam-diam.
+      (e) => normalisasiRiwayat(e, key),
     );
   let eduList = getArr('pendidikan');
   let jobList = getArr('pekerjaan');

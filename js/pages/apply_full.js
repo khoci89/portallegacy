@@ -7,7 +7,7 @@ import{registerSeamAliases as j}from"../core/bridge.js";import{uploadToCloudinar
                   </div>
                   <button type="button" onclick="document.getElementById('extra_${r}').click()" class="upload-btn" style="background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.2);">UPLOAD</button>
                 </div>
-                <input id="extra_${r}" type="file" accept=".pdf" hidden onchange="handleExtraFile(this, ${r})">
+                <input id="extra_${r}" type="file" accept=".pdf,image/*" hidden onchange="handleExtraFile(this, ${r})">
                 <div id="extraInfo_${r}" class="file-name">Belum ada file dipilih</div>
                 <div id="extraWarn_${r}" class="size-warn"><i class="fa-solid fa-circle-exclamation"></i> Gagal! Ukuran file melebihi 2 MB.</div>
               </div>
