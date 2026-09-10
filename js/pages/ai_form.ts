@@ -16,6 +16,7 @@ import { escapeHtml } from '../core/html.ts';
 import { base64ToBlob, downscaleScanImage } from '../core/file.ts';
 import '../init/util.ts';
 import { uploadToCloudinary } from '../cloudinary.ts';
+import { idbGet, idbSet, idbRemove } from '../core/idb.ts';
 
 // FASE 3/4: dulu diisi server (GAS scriptlet) saat halaman dibuka dari
 // Portal ASJ. Sekarang dibaca dari query string URL (?flow=&job=&bidang=&wa=&nama=)
@@ -838,7 +839,7 @@ function jalankanAutoFill(targetWa) {
 // satu kali jalan di halaman pertama yang dibuka user, bukan hanya ai_form.
 // Alasan tidak via service worker: SW tidak punya akses localStorage.
 // Di sini cukup fallback defensif kalau pwa.js belum termuat.
-export function initApp() {
+export async function initApp() {
   $('logoAsj').src = urlLogo;
   // Terjemahkan label statis sesuai bahasa terpilih (asj_lang).
   if (typeof window.renderLanguageLight === 'function') {
@@ -868,7 +869,23 @@ export function initApp() {
     window.bersihkanDraftLamaBase64();
   }
 
-  var saved = localStorage.getItem(getStorageKey());
+  // Restore draft: try IndexedDB first, then localStorage fallback
+  var storageKey = getStorageKey();
+  var saved: string | null = null;
+  try {
+    saved = await idbGet(storageKey);
+    if (saved && typeof saved === 'string') {
+      // Found in IndexedDB
+    } else {
+      saved = localStorage.getItem(storageKey);
+      if (saved) {
+        // Migrate: move to IndexedDB
+        idbSet(storageKey, saved).catch(function () {});
+      }
+    }
+  } catch (_) {
+    saved = localStorage.getItem(storageKey);
+  }
   if (saved) {
     try {
       var parsed = JSON.parse(saved);
@@ -887,7 +904,8 @@ export function initApp() {
       currentJftFile = null;
       currentSswFile = null;
     } catch (e) {
-      localStorage.removeItem(getStorageKey());
+      idbRemove(storageKey).catch(function () {});
+      localStorage.removeItem(storageKey);
     }
   }
 
@@ -1000,14 +1018,15 @@ function saveToLocal() {
     // localStorage 5MB penuh -> data nyangkut). Foto dikompres 600px jadi
     // kecil dan aman disimpan untuk preview; file JFT/SSW dipilih ulang
     // kalau halaman di-reload (status lama tetap tampil dari DB).
-    localStorage.setItem(
-      getStorageKey(),
-      JSON.stringify({
-        chatHistory: chatHistory,
-        latestCandidateData: latestCandidateData,
-        currentPhotoBase64: currentPhotoBase64,
-      }),
-    );
+    var payload = JSON.stringify({
+      chatHistory: chatHistory,
+      latestCandidateData: latestCandidateData,
+      currentPhotoBase64: currentPhotoBase64,
+    });
+    // IndexedDB for large data (no 5MB quota), fallback to localStorage
+    idbSet(getStorageKey(), payload).catch(function () {
+      try { localStorage.setItem(getStorageKey(), payload); } catch (_) {}
+    });
   } catch (error) {
     console.warn('Penyimpanan lokal penuh; data teks tetap tersimpan di halaman saat ini.', error);
   }
@@ -1626,8 +1645,7 @@ export function compressImage(event) {
   reader.readAsDataURL(file);
   reader.onload = function (e) {
     var img = new Image();
-    // @ts-expect-error JS→TS migration
-    img.src = e.target.result;
+    img.src = e.target?.result as string;
     img.onload = function () {
       var canvas = document.createElement('canvas'),
         ctx = canvas.getContext('2d');

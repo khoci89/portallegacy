@@ -15,6 +15,7 @@ import { escapeHtml } from '../core/html.ts';
 import { base64ToBlob, downscaleScanImage } from '../core/file.ts';
 import '../init/util.ts';
 import { uploadToCloudinary } from '../cloudinary.ts';
+import { idbGet, idbSet, idbRemove } from '../core/idb.ts';
 
 export function $(id) {
   return document.getElementById(id);
@@ -77,13 +78,16 @@ function saveToLocal() {
       files: uploadedFiles,
       savedAt: Date.now(),
     };
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    var payload = JSON.stringify(draft);
+    idbSet(DRAFT_KEY, payload).catch(function () {
+      try { localStorage.setItem(DRAFT_KEY, payload); } catch (_) {}
+    });
   } catch (e) {
     console.warn('Storage penuh, file terlalu besar untuk di-cache.');
   }
 }
 
-export function initApp() {
+export async function initApp() {
   // Izinkan form diedit manual jika malas chat
   Object.keys(fieldPaths).forEach(function (id) {
     var el = $(id);
@@ -101,7 +105,14 @@ export function initApp() {
   // Show loading skeleton while restoring
   $('chatBox').innerHTML = '<div class="flex gap-2 fade-in"><div class="w-8 h-8 rounded-full bg-amber-500 flex-shrink-0 animate-pulse"></div><div class="bg-slate-800 p-3 rounded-xl rounded-tl-none border border-slate-700 text-xs text-slate-400 animate-pulse">Memuat data...</div></div>';
 
-  let savedDraft = localStorage.getItem(DRAFT_KEY);
+  var savedDraft: string | null = null;
+  try {
+    savedDraft = await idbGet(DRAFT_KEY);
+    if (savedDraft && typeof savedDraft !== 'string') savedDraft = null;
+    if (!savedDraft) savedDraft = localStorage.getItem(DRAFT_KEY);
+  } catch (_) {
+    savedDraft = localStorage.getItem(DRAFT_KEY);
+  }
   if (savedDraft) {
     try {
       let parsed = JSON.parse(savedDraft);
@@ -135,6 +146,7 @@ export function initApp() {
         }
       });
     } catch (e) {
+      idbRemove(DRAFT_KEY).catch(function () {});
       localStorage.removeItem(DRAFT_KEY);
       sendWelcomeMessage();
     }
@@ -349,8 +361,7 @@ async function uploadFilesDirectlyBase64(filesObj, folder) {
     var f = new File([blob], file.name || key + '.jpg', {
       type: file.mime || 'application/octet-stream',
     });
-    // @ts-expect-error JS→TS migration
-    return uploadToCloudinary(f).then(function(url) { return { key: key, url: url }; });
+    return uploadToCloudinary(f as File, {}).then(function(url) { return { key: key, url: url }; });
   });
   var results = await Promise.all(uploadPromises);
   results.forEach(function(r) { uploadedUrls[r.key] = r.url; });
@@ -417,6 +428,7 @@ export async function saveToDatabase() {
           btn.classList.replace('bg-emerald-600', 'bg-sky-600');
 
           // BERSIHKAN CACHE KARENA SUDAH BERHASIL DAFTAR
+          idbRemove(DRAFT_KEY).catch(function () {});
           localStorage.removeItem(DRAFT_KEY);
 
           window.showToast(window.tr('form.siswa_success'), 'success');

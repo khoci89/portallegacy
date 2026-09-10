@@ -171,8 +171,7 @@ export function toggleSelection(id, name) {
 function updateSelectionBar() {
   const bar = document.getElementById('selection-bar');
   const count = document.getElementById('selection-count');
-  // @ts-expect-error JS→TS migration
-  count.innerText = selectedIds.size;
+  if (count) count.innerText = String(selectedIds.size);
   if (selectedIds.size > 0) {
     bar.classList.remove('translate-y-full');
   } else {
@@ -186,8 +185,7 @@ export function submitSelection() {
   let msg = l.wa_greet + ' *' + currentJob.code + ' - ' + currentJob.name + '*:\n\n';
   let i = 1;
   for (let id of selectedIds) {
-    // @ts-expect-error JS→TS migration
-    msg += i + '. ' + selectedNames[id] + ' (ID: ' + id + ')\n';
+    msg += i + '. ' + (selectedNames as Record<string, string>)[id as string] + ' (ID: ' + id + ')\n';
     i++;
   }
   msg += '\n' + l.wa_closing;
@@ -231,13 +229,11 @@ function renderExcelKeFrame(frame, url) {
       return res.arrayBuffer();
     })
     .then(function (buf) {
-      // @ts-expect-error JS→TS migration
-      var wb = window.XLSX.read(buf, { type: 'array' });
+      var wb = (window as any).XLSX.read(buf, { type: 'array' });
       if (!wb || !wb.SheetNames || !wb.SheetNames.length) throw new Error('no sheet');
       var sheet = wb.Sheets[wb.SheetNames[0]];
       if (!sheet) throw new Error('empty sheet');
-      // @ts-expect-error JS→TS migration
-      var html = window.XLSX.utils.sheet_to_html(sheet);
+      var html = (window as any).XLSX.utils.sheet_to_html(sheet);
       var nama = decodeURIComponent(String(url).split('/').pop() || 'spreadsheet');
       var doc =
         '<!doctype html><html><head><meta charset="utf-8"><title>' +
@@ -268,8 +264,7 @@ function renderDocxKeFrame(frame, url) {
       return res.arrayBuffer();
     })
     .then(function (buf) {
-      // @ts-expect-error JS→TS migration
-      return window.mammoth.convertToHtml({ arrayBuffer: buf });
+      return (window as any).mammoth.convertToHtml({ arrayBuffer: buf });
     })
     .then(function (result) {
       if (!result || !result.value) throw new Error('empty');
@@ -307,8 +302,7 @@ function renderPptxKeDiv(host, url) {
     .then(function (buf) {
       host.classList.remove('hidden');
       host.innerHTML = '';
-      // @ts-expect-error JS→TS migration
-      var p = window.pptxPreview.init(host, { width: 960, height: 540 });
+      var p = (window as any).pptxPreview.init(host, { width: 960, height: 540 });
       p.preview(buf);
       return true;
     })

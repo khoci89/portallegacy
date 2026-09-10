@@ -332,6 +332,7 @@
 
   <div class="nav-bar">
     <button id="btnPrev" aria-label="Sebelumnya" class="btn btn-prev" onclick="changeStep(-1)" style="display:none;"><i class="fas fa-arrow-left mr-1"></i> <span data-lang="form.mf_kembali">Kembali</span></button>
+    <span id="unsaved-badge" class="hidden text-[10px] text-amber-400 font-bold animate-pulse"><i class="fas fa-circle mr-1"></i>Belum tersimpan</span>
     <button onclick="submitMaster(true)" class="btn bg-amber-600 text-white ml-2"><i class="fas fa-save mr-1"></i> <span data-lang="form.mf_draft">Draft</span></button>
     <button id="btnNext" aria-label="Berikutnya" class="btn btn-next" onclick="changeStep(1)"><span data-lang="form.mf_lanjut">Lanjut</span> <i class="fas fa-arrow-right ml-1"></i></button>
     <button id="btnSubmit" class="btn btn-next bg-emerald-500 hidden" onclick="submitMaster(false)"><i class="fas fa-check mr-1"></i> <span data-lang="form.mf_simpan_final">Simpan Final</span></button>

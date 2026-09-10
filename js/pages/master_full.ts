@@ -59,6 +59,57 @@ const formatDate = (ds) => {
   }
 };
 
+// Declarative field mapping: [formId, dataKey] — dipakai auto-fill & unsaved tracking
+const FIELD_MAP: [string, string][] = [
+  ['namaLengkap', 'NAMA_LENGKAP'], ['panggilan', 'NAMA_PANGGILAN'],
+  ['panggilanHiragana', 'PANGGILAN_HIRAGANA'], ['panggilanKatakana', 'PANGGILAN_KATAKANA'],
+  ['tempatLahir', 'TEMPAT_LAHIR'], ['gender', 'GENDER'], ['usia', 'USIA'],
+  ['agama', 'AGAMA'], ['statusNikah', 'STATUS_PERNIKAHAN'], ['anak', 'JUMLAH_ANAK'],
+  ['ktp', 'NIK'], ['sim', 'DRIVER_LICENSE'], ['alamat', 'ALAMAT_LENGKAP'],
+  ['email', 'EMAIL'], ['tb', 'TT'], ['bb', 'BB'], ['goldar', 'GOLONGAN_DARAH'],
+  ['tangan', 'TANGANDOMINAN'], ['baju', 'UKURANBAJU'], ['sepatu', 'UKURANSEPATU'],
+  ['topi', 'UKURAN_TOPI'], ['tahanAc', 'TAHAN_AC'],
+  ['mataKiri', 'MATA_KIRI'], ['mataKanan', 'MATA_KANAN'], ['kacamata', 'KACAMATA'],
+  ['butaWarna', 'BUTA_WARNA'], ['tato', 'TATO'], ['tindik', 'TINDIK'],
+  ['merokok', 'MEROKOK'], ['alkohol', 'MINUM_ALKOHOL'],
+  ['penyakit', 'RIWAYAT_PENYAKIT'], ['alergi', 'ALERGI'], ['laka', 'RIWAYAT_KECELAKAAN'],
+  ['lamaJepang', 'LAMA_DI_JEPANG'], ['gajiYen', 'HARAPAN_GAJI_YEN'],
+  ['tabungan', 'HARAPAN_TABUNGAN'], ['bhsJepang', 'BAHASA'], ['nilai', 'JFT'],
+  ['promosi', 'PROMOSI_DIRI'], ['kelebihan', 'KELEBIHAN'], ['kekurangan', 'KEKURANGAN'],
+  ['keahlianKhusus', 'KEAHLIAN_KHUSUS'], ['hobi', 'HOBI_&_KETERAMPILAN'],
+  ['alasanBidang', 'ALASAN_MEMILIH_BIDANG'], ['motivasiJepang', 'MOTIVASI_KE_JEPANG'],
+  ['keinginan', 'KEINGINAN_PRIBADI'], ['rencanaPulang', 'RENCANA_SETELAH_PULANG'],
+  ['tujuanJepang', 'TUJUAN_KE_JEPANG'], ['eksJepang', 'STATUS_EKS_JEPANG'],
+  ['daruratNama', 'KONTAK_DARURAT_NAMA'], ['daruratHubungan', 'KONTAK_DARURAT_HUBUNGAN'],
+  ['daruratWa', 'KONTAK_DARURAT_WA'], ['kenalanNama', 'KENALAN_DI_JEPANG_NAMA'],
+  ['kenalanHubungan', 'KENALAN_DI_JEPANG_HUBUNGAN'], ['kenalanPekerjaan', 'KENALAN_DI_JEPANG_PEKERJAAN'],
+  ['kenalanUsia', 'KENALAN_DI_JEPANG_USIA'], ['kenalanAlamat', 'KENALAN_DI_JEPANG_ALAMAT'],
+];
+let savedSnapshot: string = '';
+
+function snapshotFormValues(): string {
+  const vals: string[] = FIELD_MAP.map(([id]) => (getEl(id) as HTMLInputElement)?.value || '');
+  for (let i = 1; i <= 5; i++) vals.push((getEl(`edu_tk_${i}`) as HTMLSelectElement)?.value || '');
+  for (let i = 1; i <= 3; i++) vals.push((getEl(`job_nm_${i}`) as HTMLInputElement)?.value || '');
+  return vals.join('|||');
+}
+
+function trackUnsavedChanges() {
+  window.addEventListener('beforeunload', (e) => {
+    if (savedSnapshot && snapshotFormValues() !== savedSnapshot) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+  document.querySelectorAll('input, select, textarea').forEach((el) => {
+    el.addEventListener('input', () => {
+      const dirty = savedSnapshot !== '' && snapshotFormValues() !== savedSnapshot;
+      const badge = document.getElementById('unsaved-badge');
+      if (badge) badge.classList.toggle('hidden', !dirty);
+    });
+  });
+}
+
 export function toggleImaMade(i) {
   let outEl = getEl(`job_out_${i}`);
   let chk = getEl(`job_now_${i}`).checked;
@@ -344,77 +395,26 @@ window.onload = function () {
           return;
         }
         if (data) {
-          setVal('nama', data['NAMA_LENGKAP']);
+          // Declarative auto-fill via FIELD_MAP
+          FIELD_MAP.forEach(([id, key]) => {
+            let val = data[key];
+            if (id === 'daruratWa' && val) val = String(val).replace(/\D/g, '');
+            if (id === 'eksJepang' && !val) val = 'BELUM PERNAH';
+            setVal(id, val);
+          });
+          // Special: tglLahir (needs date formatting)
+          if (data['TGL_LAHIR']) setVal('tglLahir', formatDate(data['TGL_LAHIR']));
+          // Special: furigana (not in FIELD_MAP because different key pattern)
           setVal('furigana', data['FURIGANA']);
+          setVal('nama', data['NAMA_LENGKAP']);
           setVal('panggilan', data['NAMAPANGGILAN']);
           setVal('panggilanKatakana', data['PANGGILAN_KATAKANA']);
-          setVal('tempatLahir', data['TEMPAT_LAHIR']);
-          if (data['TGL_LAHIR']) setVal('tglLahir', formatDate(data['TGL_LAHIR']));
-          setVal('gender', data['GENDER']);
-          setVal('usia', data['USIA']);
-          setVal('agama', data['AGAMA']);
-          setVal('statusNikah', data['STATUS_PERNIKAHAN']);
-          setVal('anak', data['JUMLAH_ANAK']);
-          setVal('ktp', data['NIK']);
-          setVal('sim', data['DRIVER_LICENSE']);
-          setVal('alamat', data['ALAMAT_LENGKAP']);
-          setVal('email', data['EMAIL']);
-          setVal('tb', data['TT']);
-          setVal('bb', data['BB']);
-          setVal('goldar', data['GOLONGAN_DARAH']);
-          setVal('tangan', data['TANGANDOMINAN']);
-          setVal('baju', data['UKURANBAJU']);
-          setVal('sepatu', data['UKURANSEPATU']);
-          setVal('topi', data['UKURAN_TOPI']);
-          setVal('tahanAc', data['TAHAN_AC']);
 
-          setVal('mataKiri', data['MATA_KIRI']);
-          setVal('mataKanan', data['MATA_KANAN']);
-          setVal('kacamata', data['KACAMATA']);
-          setVal('butaWarna', data['BUTA_WARNA']);
-          setVal('tato', data['TATO']);
-          setVal('tindik', data['TINDIK']);
-          setVal('merokok', data['MEROKOK']);
-          setVal('alkohol', data['MINUM_ALKOHOL']);
-
-          setVal('penyakit', data['RIWAYAT_PENYAKIT']);
-          setVal('alergi', data['ALERGI']);
-          setVal('laka', data['RIWAYAT_KECELAKAAN']);
-          setVal('lamaJepang', data['LAMA_DI_JEPANG']);
-          setVal('gajiYen', data['HARAPAN_GAJI_YEN']);
-          setVal('tabungan', data['HARAPAN_TABUNGAN']);
-          setVal('bhsJepang', data['BAHASA']);
-          setVal('nilai', data['JFT']);
+          // Lisensi SSW (comma-separated → 2 dropdowns)
           var lisensiVal = String(data['BIDANGSSW'] || data['SSW'] || '');
-          var lisensiParts = lisensiVal
-            .split(',')
-            .map(function (s) {
-              return s.trim();
-            })
-            .filter(Boolean);
+          var lisensiParts = lisensiVal.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
           fillManualSelect(getEl('lisensi'), getEl('lisensi_manual'), lisensiParts[0] || '');
           fillManualSelect(getEl('lisensi2'), getEl('lisensi2_manual'), lisensiParts[1] || '');
-          setVal('promosi', data['PROMOSI_DIRI']);
-          setVal('kelebihan', data['KELEBIHAN']);
-          setVal('kekurangan', data['KEKURANGAN']);
-          setVal('keahlianKhusus', data['KEAHLIAN_KHUSUS']);
-          setVal('hobi', data['HOBI_&_KETERAMPILAN']);
-          setVal('alasanBidang', data['ALASAN_MEMILIH_BIDANG']);
-          setVal('motivasiJepang', data['MOTIVASI_KE_JEPANG']);
-          setVal('keinginan', data['KEINGINAN_PRIBADI']);
-          setVal('rencanaPulang', data['RENCANA_SETELAH_PULANG']);
-          setVal('tujuanJepang', data['TUJUAN_KE_JEPANG']);
-
-          setVal('eksJepang', data['STATUS_EKS_JEPANG'] || 'BELUM PERNAH');
-          setVal('daruratNama', data['KONTAK_DARURAT_NAMA']);
-          setVal('daruratHubungan', data['KONTAK_DARURAT_HUBUNGAN']);
-          if (data['KONTAK_DARURAT_WA'])
-            setVal('daruratWa', String(data['KONTAK_DARURAT_WA']).replace(/\D/g, ''));
-          setVal('kenalanNama', data['KENALAN_DI_JEPANG_NAMA']);
-          setVal('kenalanHubungan', data['KENALAN_DI_JEPANG_HUBUNGAN']);
-          setVal('kenalanPekerjaan', data['KENALAN_DI_JEPANG_PEKERJAAN']);
-          setVal('kenalanUsia', data['KENALAN_DI_JEPANG_USIA']);
-          setVal('kenalanAlamat', data['KENALAN_DI_JEPANG_ALAMAT']);
 
           for (let i = 1; i <= 5; i++) {
             setVal(`edu_tk_${i}`, data[`PENDIDIKAN_${i}_TINGKAT`]);
@@ -480,6 +480,10 @@ window.onload = function () {
             let sInfo = getEl('sswInfo');
             if (sInfo) sInfo.innerHTML = fileSavedMsg;
           }
+
+          // Snapshot form values after auto-fill for unsaved changes tracking
+          savedSnapshot = snapshotFormValues();
+          trackUnsavedChanges();
         }
       })
       .catch((err) => {
@@ -645,8 +649,7 @@ export async function submitMaster(isDraft) {
     const uploadPromises = fileEntries.map(([key, elId]) => {
       const el = getEl(elId);
       if (el && el.files && el.files.length > 0) {
-        // @ts-expect-error JS→TS migration
-        return uploadToCloudinary(el.files[0]).then((url) => ({ key, url }));
+        return uploadToCloudinary(el.files[0] as File, {}).then((url) => ({ key, url }));
       }
       return Promise.resolve({ key, url: null });
     });

@@ -12,6 +12,7 @@
 import { registerSeamAliases } from '../core/bridge.ts';
 import { uploadToCloudinary } from '../cloudinary.ts';
 import { escapeHtml } from '../core/html.ts';
+import { idbGet, idbSet, idbRemove } from '../core/idb.ts';
 
 // FASE 3/4: field JOB/BIDANG/WA/NAMA dulu diisi server (GAS scriptlet)
 // dari e.parameter saat halaman dibuka. Sekarang dibaca dari query
@@ -42,12 +43,23 @@ const DRAFT_KEY = 'asj_apply_draft_v1';
 function saveDraft() {
   try {
     const d = { step: currentStep, nama: $('nama')?.value||'', email: $('email')?.value||'', wa: $('wa')?.value||'', gender: $('gender')?.value||'', usia: $('usia')?.value||'', tb: $('tb')?.value||'', bb: $('bb')?.value||'', savedAt: Date.now() };
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+    var payload = JSON.stringify(d);
+    idbSet(DRAFT_KEY, payload).catch(function () {
+      try { localStorage.setItem(DRAFT_KEY, payload); } catch (_) {}
+    });
   } catch(e) {}
 }
-function restoreDraft() {
+async function restoreDraft() {
   try {
-    const r = localStorage.getItem(DRAFT_KEY); if (!r) return;
+    var r: string | null = null;
+    try {
+      r = await idbGet(DRAFT_KEY);
+      if (r && typeof r !== 'string') r = null;
+      if (!r) r = localStorage.getItem(DRAFT_KEY);
+    } catch (_) {
+      r = localStorage.getItem(DRAFT_KEY);
+    }
+    if (!r) return;
     const d = JSON.parse(r);
     if (d.savedAt && Date.now() - d.savedAt > 86400000) window.showToast('Draft lebih dari 24 jam.', 'warning');
     if (d.nama && $('nama') && !$('nama').value) $('nama').value = d.nama;
@@ -59,7 +71,10 @@ function restoreDraft() {
     if (d.bb && $('bb') && !$('bb').value) $('bb').value = d.bb;
   } catch(e) {}
 }
-function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch(e) {} }
+function clearDraft() {
+  try { idbRemove(DRAFT_KEY).catch(function () {}); } catch(e) {}
+  try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
+}
 
 // VARIABEL PENYIMPAN LINK LAMA JIKA DATA DITEMUKAN
 let oldPhotoUrl = '-';
@@ -384,26 +399,23 @@ $('ssw').onchange = () => handleFile($('ssw'), 'sswInfo', 'sswWarn', null);
 // Supabase Image Transformations (Free plan tidak menyediakan resize).
 // Non-gambar (cv/jft/ssw pdf) & gambar gagal-decode (HEIC/korup) dikembalikan
 // apa adanya supaya alur upload tidak berubah/macet.
-async function downscaleImageFile(file, maxWidth, quality) {
+async function downscaleImageFile(file: File, maxWidth?: number, quality?: number): Promise<File> {
   if (!file || !file.type || !file.type.startsWith('image/')) return file;
   if (file.type === 'image/svg+xml' || file.type === 'image/gif') return file;
   try {
-    const dataUrl = await new Promise((resolve, reject) => {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
       const r = new FileReader();
-      r.onload = () => resolve(r.result);
+      r.onload = () => resolve(r.result as string);
       r.onerror = () => reject(new Error('read fail'));
       r.readAsDataURL(file);
     });
-    const img = await new Promise((resolve, reject) => {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const i = new Image();
       i.onload = () => resolve(i);
       i.onerror = () => reject(new Error('decode fail'));
-      // @ts-expect-error JS→TS migration
       i.src = dataUrl;
     });
-    // @ts-expect-error JS→TS migration
     let w = img.width,
-      // @ts-expect-error JS→TS migration
       h = img.height;
     const MAX = maxWidth || 800;
     if (w > MAX) {
@@ -413,15 +425,13 @@ async function downscaleImageFile(file, maxWidth, quality) {
     const canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = h;
-    // @ts-expect-error JS→TS migration
-    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-    const blob = await new Promise((resolve) =>
+    const ctx = canvas.getContext('2d');
+    if (ctx) ctx.drawImage(img, 0, 0, w, h);
+    const blob = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, 'image/jpeg', quality || 0.8),
     );
-    // @ts-expect-error JS→TS migration
     if (!blob || blob.size >= file.size) return file; // hasil tak lebih kecil → kirim asli
     const base = String(file.name || 'image').replace(/\.[^/.]+$/, '') || 'image';
-    // @ts-expect-error JS→TS migration
     return new File([blob], base + '.jpg', { type: 'image/jpeg' });
   } catch (e) {
     return file;
@@ -446,8 +456,7 @@ async function uploadFilesDirectly(filesObj, folder) {
   // semua dokumen). Sekarang allSettled: file yang berhasil tetap dipakai,
   // yang gagal dilempar agar caller bisa memberi tahu dokumen mana yang gagal.
   const uploadPromises = toUpload.map((key) =>
-    // @ts-expect-error JS→TS migration
-    uploadToCloudinary(files[key]).then((url) => ({ key, url })),
+    uploadToCloudinary(files[key] as File, {}).then((url) => ({ key, url })),
   );
   const settled = await Promise.allSettled(uploadPromises);
   const uploadedUrls: Record<string, any> = {};
@@ -521,6 +530,44 @@ function cekEkstensiFileLokal(inputEl) {
 export async function submitApply() {
   if (!$('agree').checked) {
     window.showToast('Setujui persyaratan terlebih dahulu.', 'error');
+    return;
+  }
+
+  // Client-side validation sebelum upload
+  const nama = ($('nama') as HTMLInputElement).value.trim();
+  const wa = ($('wa') as HTMLInputElement).value.trim();
+  const email = ($('email') as HTMLInputElement).value.trim();
+  const gender = ($('gender') as HTMLSelectElement).value;
+  const usia = ($('usia') as HTMLInputElement).value;
+  const tb = ($('tb') as HTMLInputElement).value;
+  const bb = ($('bb') as HTMLInputElement).value;
+
+  if (!nama || nama.length < 2) {
+    window.showToast('Nama harus diisi minimal 2 karakter.', 'error');
+    return;
+  }
+  if (!wa || !/^62\d{10,13}$/.test(wa.replace(/\D/g, ''))) {
+    window.showToast('Nomor WhatsApp harus 62xxxxxxxxxx (12-15 digit).', 'error');
+    return;
+  }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    window.showToast('Email harus valid.', 'error');
+    return;
+  }
+  if (!gender) {
+    window.showToast('Jenis kelamin harus dipilih.', 'error');
+    return;
+  }
+  if (!usia || isNaN(Number(usia)) || Number(usia) < 15 || Number(usia) > 70) {
+    window.showToast('Usia harus antara 15-70 tahun.', 'error');
+    return;
+  }
+  if (!tb || isNaN(Number(tb)) || Number(tb) < 100 || Number(tb) > 250) {
+    window.showToast('Tinggi badan harus antara 100-250 cm.', 'error');
+    return;
+  }
+  if (!bb || isNaN(Number(bb)) || Number(bb) < 30 || Number(bb) > 200) {
+    window.showToast('Berat badan harus antara 30-200 kg.', 'error');
     return;
   }
 
@@ -674,8 +721,7 @@ window.onload = function () {
   restoreDraft();
   // Logika murni model dokumen ada di /js/apply-docs.js (applyDocsPlan) —
   // di-unit-test supaya bug JFT/SSW tidak muncul diam-diam lagi.
-  // @ts-expect-error JS→TS migration
-  const plan = window.applyDocsPlan(window.dynamicReqStr);
+  const plan = (window as any).applyDocsPlan((window as any).dynamicReqStr);
 
   // Kartu upload default hidden — tampilkan HANYA yang diminta model loker.
   if (plan.showCv) $('card-cv').classList.remove('hidden');
@@ -709,10 +755,8 @@ window.onload = function () {
   // 2. Jika pelamar dikirim dari Portal ASJ (sudah login), auto-fill datanya & panggil file lamanya!
   if ($('wa').value) {
     formatInputWA($('wa'));
-    // @ts-expect-error JS→TS migration
-    $('wa').setAttribute('readonly', true); // Kunci WA biar tidak bisa dirubah
-    // @ts-expect-error JS→TS migration
-    if ($('nama').value) $('nama').setAttribute('readonly', true); // Kunci NAMA
+    ($('wa') as HTMLInputElement).setAttribute('readonly', 'true'); // Kunci WA biar tidak bisa dirubah
+    if (($('nama') as HTMLInputElement).value) ($('nama') as HTMLInputElement).setAttribute('readonly', 'true'); // Kunci NAMA
     cekRiwayat(); // Panggil radar pengecek ke Database!
   }
 };
