@@ -1394,11 +1394,11 @@ function renderItemField(type, index, item, definition) {
     );
   }
   if (ctrl === 'month-year') {
-    var val = String(item[field] || '').trim();
-    var parts = val.split('-');
-    var yr = parts[0] || val;
+    var valStr = String(item[field] || '').trim();
+    var parts = valStr.split('-');
+    var yr = parts[0] || valStr;
     var mo = parts[1] || '';
-    if (yr.length > 4) { yr = val; mo = ''; }
+    if (yr.length > 4) { yr = valStr; mo = ''; }
     
     var yrHtml = '<select class="input-micro" style="width: 55%; display: inline-block; margin-right: 2%;" onchange="var m=this.nextElementSibling.value; updateArrayField(\'' + type + '\',' + index + ',\'' + field + '\', this.value + (this.value && m ? \'-\' + m : \'\'))">' + yearOptionsHtml(yr) + '</select>';
     var moHtml = '<select class="input-micro" style="width: 43%; display: inline-block;" onchange="var y=this.previousElementSibling.value; updateArrayField(\'' + type + '\',' + index + ',\'' + field + '\', (y ? y : \'\') + (y && this.value ? \'-\' + this.value : \'\'))">' + monthOptionsHtml(mo) + '</select>';
