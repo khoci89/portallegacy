@@ -67,8 +67,9 @@ export const PARTIALS = {
   footer: 'partials/footer.html',
   social: 'partials/social.html',
   bottomNav: 'partials/bottom-nav.html',
+  publicLanding: 'partials/public-landing.html',
+  kandidatDashboard: 'partials/kandidat-dashboard.html',
   scriptsShared: 'partials/scripts-shared.html',
-  // Fase 5 lanjutan (2026-08-18): duplikat di 5 halaman standalone
   headShared: 'partials/head-shared.html',
   themeInit: 'partials/theme-init.html',
 };
@@ -79,6 +80,8 @@ export const PARTIALS = {
 export const BUNDLE_REGIONS = {
   head: { start: '<!--HEAD_START-->', end: '<!--HEAD_END-->' },
   header: { start: '<!--HEADER_START-->', end: '<!--HEADER_END-->' },
+  publicLanding: { start: '<!--PUBLIC_LANDING_START-->', end: '<!--PUBLIC_LANDING_END-->' },
+  kandidatDashboard: { start: '<!--KANDIDAT_DASHBOARD_START-->', end: '<!--KANDIDAT_DASHBOARD_END-->' },
   footer: { start: '<!--FOOTER_START-->', end: '<!--FOOTER_END-->' },
   bottomNav: { start: '<!--BOTTOM_NAV_START-->', end: '<!--BOTTOM_NAV_END-->' },
 };
