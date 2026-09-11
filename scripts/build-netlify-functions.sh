@@ -24,7 +24,7 @@ for wrapper in "$FUNC_DIR"/*.js; do
     --bundle \
     --platform=node \
     --target=node20 \
-    --format=cjs \
+    --format=esm \
     --outfile="$outfile" \
     --log-level=error 2>/dev/null; then
     BUNDLED=$((BUNDLED + 1))
@@ -43,6 +43,6 @@ fi
 cp -r "$FUNC_DIR/_lib" "$OUT_DIR/_lib" 2>/dev/null || true
 
 # Ensure functions use CommonJS (root package.json has type:module)
-echo '{"type": "commonjs"}' > "$OUT_DIR/package.json"
+echo '{"type": "module"}' > "$OUT_DIR/package.json"
 
 echo "── Done ──"

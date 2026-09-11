@@ -1,6 +1,6 @@
 import { normalizeWa, pick, supabaseJson } from '../db/client.ts';
 import { requireRole } from '../actions-auth.ts';
-import * as buildMasterNested from '../actions-master.ts';
+import { buildMasterNested } from '../actions-master.ts';
 import { syncBiodataKeMail, syncFormMailDariUpload } from '../actions-mail.ts';
 import { fetchMasterByWa as dbFetchMasterByWa } from '../db/master.ts';
 import { findFormsByWa } from '../db/forms.ts';

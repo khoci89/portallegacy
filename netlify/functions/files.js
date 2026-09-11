@@ -1,3 +1,2 @@
-'use strict';
-const { makeHandler } = require('./_lib/netlify-wrapper');
-exports.handler = makeHandler();
+import { makeHandler  } from './_lib/netlify-wrapper';
+export default makeHandler();

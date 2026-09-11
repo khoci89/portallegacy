@@ -1,72 +1,71 @@
-'use strict';
-const { handleProcessUploadDoc } = require('./_lib/actions-ingest');
-const { verifyToken } = require('./_lib/session');
-const rateLimit = require('./_lib/rate-limit');
+import { handleProcessUploadDoc  } from './_lib/actions-ingest';
+import { verifyToken  } from './_lib/session';
+import * as rateLimit from './_lib/rate-limit';
 
 // ingest.js — Standalone wrapper untuk Smart Ingestion.
 // HANYA membundel actions-ingest.ts + deps-nya (pdf-parse, xlsx, mammoth).
 // Function lain TIDAK perlu membundel library berat ini.
 // Dipanggil dari api-client.js: processUploadDoc → 'ingest'
 
-function clientIp(event) {
-  const h = (event && event.headers) || {};
-  const fwd = h['x-forwarded-for'];
+function clientIp(req) {
+  if (!req || !req.headers) return null;
+  const getHeader = (name) => typeof req.headers.get === 'function' ? req.headers.get(name) : req.headers[name];
+  const fwd = getHeader('x-forwarded-for');
   if (fwd) return String(fwd).split(',')[0].trim();
-  return h['client-ip'] || h['x-real-ip'] || null;
+  return getHeader('client-ip') || getHeader('x-real-ip') || null;
 }
 
 // FIX (audit 2026-09-07): ingest adalah operasi BERAT (download 15s + panggilan
 // Gemini) dan dulu TANPA rate limit sama sekali — sekarang 10 req/menit/IP.
-function limited(event) {
-  const ip = clientIp(event) || 'unknown';
+function limited(req) {
+  const ip = clientIp(req) || 'unknown';
   const r = rateLimit.check('ingest:' + ip, { limit: 10, windowMs: 60000 });
   return r.ok
     ? null
-    : {
-        statusCode: 429,
+    : Response.json({
+          success: false,
+          message: 'Terlalu banyak permintaan. Coba lagi dalam ' + (r.retryAfter || 60) + ' detik.',
+        }, {
+        status: 429,
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Access-Control-Allow-Origin': '*',
           'Retry-After': String(r.retryAfter || 60),
-        },
-        body: JSON.stringify({
-          success: false,
-          message: 'Terlalu banyak permintaan. Coba lagi dalam ' + (r.retryAfter || 60) + ' detik.',
-        }),
-      };
+        }
+      });
 }
 
-exports.handler = async (event) => {
-  const gate = limited(event);
+export default async (req, context) => {
+  const gate = limited(req);
   if (gate) return gate;
 
   let body = {};
-  try {
-    body = JSON.parse(event.body || '{}');
-  } catch {
-    /* body non-JSON */
+  if (req.method === 'POST') {
+    try {
+      body = await req.json();
+    } catch {
+      /* body non-JSON */
+    }
   }
 
   const { action, payload, sessionToken } = body;
 
   if (action !== 'processUploadDoc') {
-    return {
-      statusCode: 200,
+    return Response.json({
+        success: false,
+        message: 'Action not supported by ingest function: ' + action,
+      }, {
+      status: 200,
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
         'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({
-        success: false,
-        message: 'Action not supported by ingest function: ' + action,
-      }),
-    };
+      }
+    });
   }
 
   // Panggilan internal server-to-server (fireIngest dari submitApply) membawa
   // header x-ingest-secret — diteruskan ke handler agar sah tanpa sesi user.
-  const h = (event && event.headers) || {};
-  const internalSecret = String(h['x-ingest-secret'] || h['X-Ingest-Secret'] || '') || undefined;
+  const internalSecret = req.headers.get('x-ingest-secret') || req.headers.get('X-Ingest-Secret') || undefined;
 
   let out;
   try {
@@ -75,12 +74,11 @@ exports.handler = async (event) => {
     out = { success: false, message: 'Error internal: ' + e.message };
   }
 
-  return {
-    statusCode: 200,
+  return Response.json(out, {
+    status: 200,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
       'Access-Control-Allow-Origin': '*',
-    },
-    body: JSON.stringify(out),
-  };
+    }
+  });
 };
