@@ -33,20 +33,15 @@ export async function translateItemsToJapanese(items: string[]): Promise<string[
   // Prompt meminta delimiter "###" antar item — lebih robust daripada nomor
   // baris untuk paragraf panjang. Model boleh pakai newline di dalam item.
   const prompt =
-    'Terjemahkan tiap item dari Bahasa Indonesia ke Bahasa Jepang untuk CV kerja.' +
-    NL +
-    'Format output: satu terjemahan per item, pisahkan tiap item dengan baris berisi HANYA ###.' +
-    ' JANGAN pakai JSON. JANGAN pakai escape backslash-u. JANGAN beri tanda kutip di luar teks.' +
-    ' Anda boleh pakai newline di DALAM satu item (untuk paragraf), tapi HARUS ada ###' +
-    ' sebagai pemisah antar item.' +
-    NL +
-    'Contoh:' +
-    NL + '###' +
-    NL +
-    '2. 日本で働きながら技能を身につけたいです。家族のために頑張ります。' +
-    NL +
-    NL +
-    flat.map((t, i) => (i + 1) + '. ' + t).join(NL + DELIM + NL);
+    'Terjemahkan teks berikut ke bahasa Jepang untuk keperluan formulir biodata (CV) kerja.' +
+    NL + 'ATURAN:' +
+    NL + '- Terjemahkan baris demi baris, dan pertahankan urutannya.' +
+    NL + '- JANGAN menambahkan teks lain selain terjemahan.' +
+    NL + '- Pisahkan setiap hasil terjemahan dengan baris yang HANYA berisi delimiter "###".' +
+    NL + '- Teks mungkin berisi kalimat atau hanya satu kata.' +
+    NL + NL +
+    'INPUT TEKS UNTUK DITERJEMAHKAN:' + NL +
+    flat.join(NL + DELIM + NL);
 
   let text = '';
   try {
@@ -57,6 +52,7 @@ export async function translateItemsToJapanese(items: string[]): Promise<string[
     return out;
   }
   if (!text) return out;
+  console.log('RAW GEMINI RESPONSE:', JSON.stringify(text));
 
   // Strategi 1: Coba parse dengan delimiter "###".
   if (text.includes(DELIM)) {
