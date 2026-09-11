@@ -1,292 +1,250 @@
 # share.html — Deep Analysis
 
-> Public Share Viewer untuk Kaisha (klien PT ASJ). Dianalisis sampai akar pada 2026-08-27.
+> Deep scan: 2026-09-11. Standalone page (type="module") — Public candidate viewer + document preview.
+> Entry point: `js/pages/share.ts` → `js/pages/share.js`
 
-## 1. Arsitektur Halaman
-
-```
-share.html (180 baris)
-├── <head> — Meta, CSS inline, shared partials
-├── <body data-page="share"> — Full-page viewer
-│   ├── BACK TO PORTAL — Tombol kembali (fixed top-left)
-│   ├── SKIP LINK — Aksesibilitas
-│   ├── AMBIENT BACKGROUND — Gradient blobs + dot pattern
-│   ├── HEADER (sticky) — Logo ASJ + Job Info + Language Toggle
-│   ├── MAIN CONTENT
-│   │   ├── LOADING STATE — 3 skeleton cards
-│   │   ├── ERROR STATE — Access denied / not found
-│   │   ├── FILTER BAR — Gender | Age | JFT Level
-│   │   ├── CANDIDATES GRID — Responsive cards (1-3 columns)
-│   │   └── EMPTY STATE — No candidates
-│   ├── DOCUMENT PREVIEW MODAL — iframe + img + pptx host
-│   ├── FLOATING SELECTION BAR — Count + "Kirim Pilihan" (WhatsApp)
-│   └── SCRIPTS — ESM modules + vendor libs
-```
-
----
-
-## 2. Dependensi Lengkap
-
-### 2.1 CSS
-
-| File | Tipe | Keterangan |
-|------|------|------------|
-| `/vendor/font-awesome/css/all.min.css` | External | Ikon Font Awesome |
-| `/fonts/fonts.css` | Local | Custom fonts (Montserrat) |
-| `/assets/main.css` | Build | Tailwind CSS bundle |
-| `<style>` inline | Inline | ~40 baris CSS kustom (glass-card, skeleton, layer) |
-
-### 2.2 JavaScript (ESM + Vendor)
-
-| File | Tipe | Fungsi |
-|------|------|--------|
-| `/js/pages/share.ts` | Entry point | Grid rendering, preview, selection (500+ baris) |
-| `/js/core/bridge.ts` | Core | ESM bridge → window.* aliases |
-| `/pwa.ts` | Core | Service worker + PWA features |
-| `/vendor/xlsx.full.min.js` | Vendor | Excel rendering (SheetJS) |
-| `/vendor/mammoth.browser.min.js` | Vendor | Word rendering (mammoth) |
-| `/vendor/pptx-preview.umd.js` | Vendor | PowerPoint rendering (pptx-preview) |
-
-### 2.3 API Endpoint
-
-| Endpoint | Method | Fungsi |
-|----------|--------|--------|
-| `/api/share-data?job=CODE` | GET | Load job info + candidates + documents |
-
-### 2.4 Database Tables (READ)
-
-| Tabel | Operasi | Keterangan |
-|-------|---------|------------|
-| `database_candidate` | READ | Kandidat ter-approve untuk job |
-| `database_asj_form` | READ | Dokumen dari lamaran (fallback) |
-| `pemberkasan_checklist` | READ | Dokumen pemberkasan |
-| `master_database_candidate` | READ | Master biodata (foto fallback) |
-| `jobs` | READ | Info pekerjaan |
-
-### 2.5 External Services
-
-| Service | Fungsi |
-|---------|--------|
-| Supabase Storage | List folder master kandidat |
-| WhatsApp API | Kirim pilihan ke kaisha |
-
----
-
-## 3. Alur Data (Flow)
-
-### 3.1 Page Load
+## 1. Struktur HTML (261 baris)
 
 ```
-1. Browser load share.html?job=CODE
-2. Theme init (THEME_INIT_SCRIPT)
-3. Back button rendered (fixed top-left)
-4. Import map injected (Sentry dummy)
-5. Scripts load:
-   a. share.js — grid logic + preview
-   b. pwa.js — PWA features
-   c. xlsx.full.min.js — Excel rendering
-   d. mammoth.browser.min.js — Word rendering
-   e. pptx-preview.umd.js — PowerPoint rendering
-6. DOMContentLoaded → async init:
-   a. Set language toggle state (from localStorage)
-   b. Update static text (ID/JP)
-   c. Parse URL params → jobCode
-   d. If no jobCode → showError()
-   e. Fetch: GET /api/share-data?job=CODE
-   f. Backend (handleShareData):
-      - Find job by code
-      - Find approved candidates for job
-      - For each candidate:
-        - Map candidate data
-        - List storage folder master/<NAMA>/
-        - Classify docs (CV/JFT/SSW/extra)
-        - Filter by dokumen_share setting
-        - Merge from forms + pemberkasan + master
-        - Fallback photo from folder/form
-      - Return { job, candidates }
-   g. If error → showError()
-   h. If no candidates → show empty state
-   i. If candidates → show filter bar + grid + renderGrid()
-```
-
-### 3.2 Grid Rendering
-
-```
-1. renderGrid() called
-2. Read filter values (gender, age, JFT)
-3. Filter allCandidates:
-   - Gender: L/P/all
-   - Age: <20 / 20-25 / >25 / all
-   - JFT: A2/N4 / B1/N3 / all
-4. For each candidate:
-   a. Build card HTML:
-      - Photo (with fallback to ui-avatars)
-      - Name, gender, age, height, weight
-      - JFT level badge
-      - SSW badge
-      - Document buttons (CV, JFT, SSW, extras)
-      - Selection checkbox
-   b. Insert into grid
-```
-
-### 3.3 Document Preview
-
-```
-1. User clicks document button → openPreview(url, title)
-2. Set modal title + download link
-3. Show loading spinner
-4. Determine file type:
-   a. Image (jpg/png/gif/webp) → <img> tag
-   b. PDF → <iframe> with URL
-   c. Excel (xls/xlsx/csv) → renderExcelKeFrame() (SheetJS)
-   d. Word (docx) → renderDocxKeFrame() (mammoth)
-   e. PowerPoint (pptx) → renderPptxKeDiv() (pptx-preview)
-   f. Unsupported → pesanPreviewTidakTersedia() + download button
-5. Show modal
-6. Close → closePreview() cleanup
-```
-
-### 3.4 Selection + WhatsApp
-
-```
-1. User clicks candidate card → toggleSelection(id, name)
-2. Update selection bar count
-3. Show/hide floating bar
-4. User clicks "Kirim Pilihan" → submitSelection()
-5. Build WhatsApp message:
-   "Halo Admin ASJ, kami tertarik dengan kandidat berikut untuk Job CODE - NAME:
-    1. Nama (ID: xxx)
-    2. Nama (ID: yyy)
-   Mohon tindak lanjutnya."
-6. Open wa.me/6287889502004?text=ENCODED_MSG
+share.html (261 baris)
+├── <!DOCTYPE html><html lang="id"> (1-3)
+├── <head> (4-53)
+│   ├── Meta, CSP (frame-src 'self' — unique!), PWA manifest
+│   ├── <!--HEAD_SHARED_START--> (24-29): Font Awesome, fonts.css, Montserrat preload
+│   ├── <style> (30-52): ~23 baris CSS (Tailwind layer ordering, glass-card, skeleton, fade-in)
+│   └── /assets/main.css (53)
+│
+├── <body data-page="share"> (54-260)
+│   ├── <!--THEME_INIT_START--> (56-58): Theme loader
+│   ├── Back-to-portal link (59-63): Fixed position
+│   ├── Skip link (64-65): WCAG 2.4.1
+│   ├── Ambient background (67-72): Decorative blurs + SVG dot pattern
+│   │
+│   ├── <header> (74-106): Sticky glass-card
+│   │   ├── Logo + company name + "Secure" badge
+│   │   ├── Language toggle button (#text-lang)
+│   │   └── Job info display (#job-title, #job-code)
+│   │
+│   ├── <main id="main-content"> (108-195)
+│   │   ├── Loading state (111-146): 3 skeleton cards (responsive grid)
+│   │   ├── Error state (148-155): Icon + title + message
+│   │   ├── Filter bar (157-179): 3 selects (Gender, Age, JFT Level)
+│   │   ├── #candidates-grid (181-184): Dynamic card container
+│   │   └── Empty state (186-193): "No candidates" display
+│   │
+│   ├── Document preview modal (197-215): iframe + img + pptx container
+│   │   ├── #preview-iframe (211): For PDF/Excel/Word srcdoc
+│   │   ├── #preview-img (212): For image preview
+│   │   ├── #preview-pptx (213): For PPTX rendering
+│   │   └── #preview-download (202): Download link
+│   │
+│   ├── Floating selection bar (217-235): Bottom-fixed, shows count + WhatsApp button
+│   │
+│   └── <!--SCRIPTS_SHARED_START--> (237-259)
+│       ├── Toast container, importmap
+│       ├── /js/pages/share.js (main logic)
+│       ├── /pwa.js
+│       └── Vendor libs: xlsx.full.min.js, mammoth, pptx-preview
 ```
 
 ---
 
-## 4. State Management
+## 2. Partials (3 marker pairs)
 
-### 4.1 Module-Level Variables
-
-| Variable | Type | Fungsi |
-|----------|------|--------|
-| `currentLang` | String | Bahasa aktif (id/jp) |
-| `allCandidates` | Array | Semua kandidat dari API |
-| `currentJob` | Object | Info pekerjaan (code, name, tsk) |
-| `selectedIds` | Set | ID kandidat terpilih |
-| `selectedNames` | Object | Map ID → nama kandidat |
-
-### 4.2 localStorage Keys
-
-| Key | Isi |
-|-----|-----|
-| `asj_lang` | Bahasa preference (id/jp) |
-| `asj_theme` | Theme preference (dark/SAKURA) |
-
-### 4.3 i18n (SHARE_LANG)
-
-| Section | Keys |
-|---------|------|
-| Header | secure, load |
-| Error | err_acc, err_msg |
-| Empty | empty_t, empty_s |
-| Filter | filter, gen_all, gen_l, gen_p, age_all, jft_all |
-| Selection | sel_count, sel_btn |
-| Preview | prev, loading_doc, prev_unavail, dl, close |
-| WhatsApp | wa_greet, wa_closing |
+| Marker | Lines | Partial File | Isi |
+|--------|-------|-------------|-----|
+| `HEAD_SHARED` | 24-29 | `partials/head-shared.html` | Font Awesome, fonts.css, Montserrat preload |
+| `THEME_INIT` | 56-58 | `partials/theme-init.html` | Theme loader script |
+| `SCRIPTS_SHARED` | 237-259 | `partials/scripts-shared.html` | Toast, importmap, module scripts + vendor libs |
 
 ---
 
-## 5. Backend: handleShareData()
+## 3. Share/View Flow
 
-### 5.1 Input/Output
+1. Read `job` URL param: `?job=ASJ-2024-001`
+2. If missing → `showError()` with i18n message
+3. Fetch `GET /api/share-data?job=<code>` (retry: 2x, 2s delay)
+4. Response: `{ job: { name, code }, candidates: [...] }`
+5. Update header: `#job-title` + `#job-code`
+6. If candidates → show filter bar + render grid; else → empty state
 
-```
-Input: jobCode (string)
-Output: {
-  job: { code, name, tsk },
-  candidates: [{
-    id_kandidat, no_wa, nama_lengkap, gender, usia, tb, bb,
-    pas_photo, file_cv, jft, ssw,
-    nilai_jft_text, bidang_ssw_text,
-    extraDocs: [{ name, url }]
-  }]
-}
-```
+### Candidate Card Data
+- Name, Photo (lazy load, fallback to ui-avatars.com)
+- Gender (icon), Age, Height (cm), Weight (kg)
+- JFT level badge, SSW/bidang badge
+- Document buttons: CV, JFT, SSW, extra docs
 
-### 5.2 Data Sources (4 tables + Storage)
-
-| Source | Data |
-|--------|------|
-| `database_candidate` | Kandidat ter-approve untuk job |
-| `database_asj_form` | Dokumen dari lamaran (fallback CV/JFT/SSW/foto) |
-| `pemberkasan_checklist` | Dokumen pemberkasan (KK/KTP/ijazah) |
-| `master_database_candidate` | Master biodata (foto fallback) |
-| Supabase Storage | Folder master/<NAMA>/ (extra docs) |
-
-### 5.3 Document Classification
-
-```
-docTypeOf(filename):
-  1. Token panjang (>3 char): FILE_CV→CV, PHOTOFILE→PHOTO, dll
-  2. Prefix uppercase: KK, KTP, IJAZAH
-  3. Pola lawas "1. X_CV.xlsx": cari token di seluruh nama
-  4. Default: uppercase extension
-```
-
-### 5.4 Document Filtering
-
-```
-allowedDocTypes = job.dokumen_share.split(',')
-  - Default: ['CV', 'JFT', 'SSW']
-  - 'ALL' = tampilkan semua
-  - Filter applied to extraDocs + formDocs + pemberkasanDocs
-```
+### Selection Flow
+1. Click card → `toggleSelection(id, name)` → adds/removes from Set
+2. Selection bar updates count
+3. "Kirim Pilihan" → `submitSelection()` → opens WhatsApp to `6287889502004`
 
 ---
 
-```html
-<a href="/" class="fixed top-4 left-4 z-[100] flex items-center gap-2 px-4 py-2 bg-black/70 hover:bg-black/90 text-white text-xs font-bold rounded-full border border-white/20 backdrop-blur-sm transition-all shadow-lg hover:scale-105" aria-label="Kembali ke Portal">
-  <i class="fas fa-arrow-left"></i>
-  <span class="hidden sm:inline">Portal</span>
-</a>
-```
+## 4. Filters
+
+| Filter | Line | Options |
+|--------|------|---------|
+| Gender | 163 | all / l (male) / p (female) |
+| Age | 168 | all / under20 / 20to25 / over25 |
+| JFT Level | 174 | all / a2 (A2/N4) / b1 (B1/N3) |
+
+Each `onchange` triggers `renderGrid()`.
 
 ---
 
-## 6. Build Pipeline
+## 5. Document Preview Modal (lines 197-215)
 
-| File | Role |
-|------|------|
-| share.html | HTML template (180 baris) |
-| js/pages/share.ts | Entry point (500+ baris) |
-| js/core/bridge.ts | ESM bridge (470 baris) |
-| pwa.ts | PWA features (350 baris) |
-| vendor/xlsx.full.min.js | Excel rendering |
-| vendor/mammoth.browser.min.js | Word rendering |
-| vendor/pptx-preview.umd.js | PowerPoint rendering |
+- **PDF:** iframe with `src` URL
+- **Image:** `<img>` with src
+- **Excel:** SheetJS → `srcdoc` in iframe
+- **Word:** Mammoth → HTML in iframe `srcdoc`
+- **PowerPoint:** pptx-preview → rendered to `#preview-pptx` div
+
+Vendor libs loaded as classic `<script>` (not modules):
+- `xlsx.full.min.js` (SheetJS)
+- `mammoth.browser.min.js`
+- `pptx-preview.umd.js`
 
 ---
 
-## 7. Key Functions
+## 6. i18n
 
-| Function | Fungsi |
-|----------|--------|
-| renderGrid() | Render candidate cards with filters |
-| openPreview(url, title) | Open document preview modal |
-| closePreview() | Close preview modal + cleanup |
-| toggleSelection(id, name) | Select/deselect candidate |
-| submitSelection() | Send selection via WhatsApp |
-| toggleLang() | Switch ID/JP language |
-| updateStaticText() | Update all static text for language |
-| showError(msg) | Show error state |
-| renderExcelKeFrame() | Render Excel client-side (SheetJS) |
-| renderDocxKeFrame() | Render Word client-side (mammoth) |
-| renderPptxKeDiv() | Render PowerPoint client-side (pptx-preview) |
+| Metric | Count |
+|--------|-------|
+| `data-lang-aria` | 2 (ui.download, public.close) |
+| JS-embedded dictionary | ~30 keys (id/jp) |
+| `text-*` id elements | 7 (swapped by JS) |
 
-## 8. E2E Tests
+Language toggle: button at line 89 calls `toggleLang()` → `updateStaticText()`.
 
-| Test File | Coverage |
-|-----------|----------|
-| `e2e/share-test.mjs` | Page load, back button, header, i18n toggle, filters+aria, grid, card content, selection+deselect, preview modal, PWA, theme, loading/error states |
+---
 
-Run: `node e2e/share-test.mjs` (19 categories, 35+ assertions)
+## 7. External Resources
+
+### Images
+
+| Line | URL | Purpose |
+|------|-----|---------|
+| 80 | `gdwvffmevwtwnzrapjwy.supabase.co/.../logo-removebg-preview.webp` | Header logo |
+| JS | `ui-avatars.com/api/...` | Fallback photo |
+
+### CSS/JS
+
+| File | Purpose |
+|------|---------|
+| `/vendor/font-awesome/css/all.min.css` | Icons |
+| `/fonts/fonts.css` | Custom fonts |
+| `/assets/main.css` | Tailwind bundle |
+| `<style>` inline (23 lines) | Layer ordering, glass-card, skeleton |
+| `/js/pages/share.js` | Main logic |
+| `/pwa.js` | SW registration |
+| `/vendor/xlsx.full.min.js` | Excel preview |
+| `/vendor/mammoth.browser.min.js` | Word preview |
+| `/vendor/pptx-preview.umd.js` | PPTX preview |
+
+---
+
+## 8. CSS Approach
+
+- **Unique:** Inline `<style>` declares `@layer` ordering before `main.css` — intentional for Tailwind composition
+- **`.glass-card`** in `@layer components` — glassmorphism card
+- **`.skeleton`** — shimmer loading animation
+- **`.animate-fade-in`** — opacity + translateY
+- Tailwind utilities throughout
+
+---
+
+## 9. JavaScript
+
+### Entry Point
+`/js/pages/share.js` — ESM module, exports 8 functions
+
+### URL Parameters
+
+| Param | Usage |
+|-------|-------|
+| `job` | Job code to fetch candidates |
+
+### Key Functions (from HTML)
+
+| Function | Called From | Purpose |
+|----------|------------|---------|
+| `toggleLang()` | #89 (onclick) | Switch ID/JP |
+| `renderGrid()` | 3 filter selects (onchange) | Re-render filtered cards |
+| `closePreview()` | #preview-close (203) | Close modal |
+| `submitSelection()` | WhatsApp btn (231) | Format + open WA |
+
+### Key Functions (dynamic, from JS templates)
+
+| Function | Trigger | Purpose |
+|----------|---------|---------|
+| `toggleSelection(id, name)` | Card onclick | Add/remove from selection |
+| `openPreview(file, name)` | Doc button onclick | Open preview modal |
+
+---
+
+## 10. Accessibility
+
+### ARIA (14 attributes)
+
+- 5 `aria-label` (portal link, lang toggle, 3 filters, download, close, submit)
+- 4 `aria-live` (loading=polite, error=assertive, selection count=polite, toast=polite)
+- Dynamic `aria-pressed` on card buttons
+- Dynamic `aria-label` on cards ("Pilih [Name] -- [ID]")
+
+### Keyboard
+
+- Skip link → `#main-content`
+- Cards are real `<button>` elements (not div onclick) — documented a11y decision (2026-08-12)
+- Document preview buttons are real `<button>` elements
+
+### Present
+
+- ✅ Skip link
+- ✅ Focusable main (`tabindex="-1"`)
+- ✅ Live regions for loading, errors, selection, toasts
+- ✅ Real buttons (not div onclick)
+
+### Missing
+
+- No `role="dialog"` on preview modal
+- No focus trap in preview modal
+
+---
+
+## 11. Issues Found
+
+| # | Severity | Issue | Line |
+|---|----------|-------|------|
+| 1 | 🟢 Low | Missing `<meta name="referrer" content="no-referrer">` — present on other pages | 4 |
+| 2 | 🟢 Low | Missing `<base target="_top">` — present on other pages | 4 |
+| 3 | 🟢 Low | Vendor scripts (SheetJS, Mammoth, pptx) load synchronously, block parsing | 256-258 |
+| 4 | 🟢 Low | `frame-src 'self'` — unique relaxation for iframe preview; other pages use `'none'` | CSP |
+
+### Passes
+
+- ✅ Valid HTML5 structure
+- ✅ No duplicate IDs
+- ✅ All tags properly closed
+- ✅ Cleanest accessibility of all pages (real buttons, live regions, a11y comments in code)
+
+---
+
+## 12. CSP Comparison
+
+| Directive | share.html | Other pages |
+|-----------|-----------|-------------|
+| `frame-src` | `'self'` | `'none'` |
+| `script-src` | `'unsafe-inline' 'unsafe-eval'` | Same |
+| `img-src` | `'self' https: data:` | Same |
+| `connect-src` | `'self' https:` | Same |
+| `object-src` | `'none'` | Same |
+
+**Difference:** `frame-src 'self'` allows iframe for document preview. Other pages block all frames.
+
+---
+
+## 13. Key Functions Referenced
+
+`toggleLang`, `renderGrid`, `closePreview`, `submitSelection`, `toggleSelection`, `openPreview`, `showError`, `updateStaticText`
