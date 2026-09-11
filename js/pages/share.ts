@@ -106,6 +106,7 @@ export function toggleLang() {
   } catch (e) {}
   // Sinkronkan CURRENT_LANG global i18n.js supaya tr() ikut berganti bahasa.
   if (window.CURRENT_LANG !== undefined) window.CURRENT_LANG = currentLang;
+  document.documentElement.lang = currentLang === 'jp' ? 'ja' : 'id';
   document.getElementById('lang-ind').className =
     currentLang === 'id' ? 'text-pink-400 font-black' : 'text-slate-500 font-normal';
   document.getElementById('lang-jp').className =

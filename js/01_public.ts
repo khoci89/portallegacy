@@ -111,6 +111,8 @@ export async function setLanguage(lang) {
   // hanya window.CURRENT_LANG yang berubah → tr() baca bahasa LAMA).
   window.CURRENT_LANG = lang;
   localStorage.setItem('asj_lang', lang);
+  // Update <html lang> for screen readers (ISO 639-1: ja = Japanese, id = Indonesian)
+  document.documentElement.lang = lang === 'jp' ? 'ja' : 'id';
   renderLanguage();
   // Re-render komponen yang punya teks dinamis (dibuat via JS, bukan data-lang)
   if (

@@ -7,6 +7,10 @@
 // modul CURRENT_LANG.
 import { id } from './locales/id/index.js';
 export var CURRENT_LANG = localStorage.getItem('asj_lang') || 'id';
+// Set initial <html lang> for screen readers (ISO 639-1: ja = Japanese, id = Indonesian)
+if (typeof document !== 'undefined' && document.documentElement) {
+  document.documentElement.lang = CURRENT_LANG === 'jp' ? 'ja' : 'id';
+}
 // Accessor window.CURRENT_LANG — pemakai luar (01_public.setLanguage,
 // pages/share.js) menulis `window.CURRENT_LANG = lang`; accessor men-delegate
 // ke binding modul supaya tr()/trOption() tidak pernah basi (Fase 3 langkah
@@ -277,6 +281,10 @@ export async function toggleFormLanguage() {
   try {
     localStorage.setItem('asj_lang', CURRENT_LANG);
   } catch (e) {}
+  // Update <html lang> for screen readers
+  if (typeof document !== 'undefined' && document.documentElement) {
+    document.documentElement.lang = CURRENT_LANG === 'jp' ? 'ja' : 'id';
+  }
   if (typeof renderLanguageLight === 'function') renderLanguageLight();
   if (typeof window.renderLanguage === 'function') window.renderLanguage();
   if (typeof window.renderSysConfig === 'function' && document.getElementById('config-container'))
