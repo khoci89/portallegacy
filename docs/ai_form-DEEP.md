@@ -1,344 +1,269 @@
 # ai_form.html — Deep Analysis
 
-> Halaman AI CV (Qween Jeklin) — Chat AI + Form CV Bilingual. Dianalisis sampai akar pada 2026-08-27.
+> Deep scan: 2026-09-11. Standalone page (type="module") — AI-powered CV chat + bilingual preview form.
+> Entry point: `js/pages/ai_form.ts` → `js/pages/ai_form.js`
 
-## 1. Arsitektur Halaman
-
-```
-ai_form.html (412 baris)
-├── <head> — Meta, CSS inline, shared partials
-├── <body data-page="ai-form"> — Split view (chat + form)
-│   ├── BACK TO PORTAL — Tombol kembali (fixed top-left)
-│   ├── SKIP LINK — Aksesibilitas
-│   ├── MOBILE TAB BAR — Chat Jeklin | Preview CV (mobile only)
-│   ├── CHAT PANEL (35% desktop / full mobile)
-│   │   ├── Chat Header — Logo Jeklin + status
-│   │   ├── Chat Box — Daftar pesan
-│   │   └── Chat Input — Text input + send button
-│   └── FORM PANEL (65% desktop / full mobile)
-│       ├── Header — Logo ASJ + mode label + Simpan DB + Language toggle
-│       ├── AI Typing Status — Loading indicator
-│       ├── Section 1: Identitas & Kontak — 22 field (readonly)
-│       ├── Section 2: Fisik & Ukuran — 7 field
-│       ├── Section 3: Medis & Kebiasaan — 12 field (bilingual ID/JP)
-│       ├── Section 4: Jiko PR & Wawancara — 20 field (bilingual ID/JP)
-│       ├── Section 5: Pendidikan — Dynamic array
-│       ├── Section 6: Pekerjaan — Dynamic array
-│       ├── Section 7: Keluarga — Dynamic array
-│       ├── Section 8: Kenalan di Jepang — 8 field (bilingual)
-│       └── Upload Section — 9 file uploads (foto + 8 documents)
-├── SCRIPTS — ESM modules
-└── DATA LISTS — JFT, SSW, Pekerjaan options
-```
-
----
-
-## 2. Dependensi Lengkap
-
-### 2.1 CSS
-
-| File | Tipe | Keterangan |
-|------|------|------------|
-| `/vendor/font-awesome/css/all.min.css` | External | Ikon Font Awesome |
-| `/fonts/fonts.css` | Local | Custom fonts (Montserrat) |
-| `/assets/main.css` | Build | Tailwind CSS bundle |
-| `<style>` inline | Inline | ~80 baris CSS kustom (label, input, responsive) |
-
-### 2.2 JavaScript (ESM)
-
-| File | Tipe | Fungsi |
-|------|------|--------|
-| `/js/pages/ai_form.ts` | Entry point | Chat AI, form CV, upload, autofill (900+ baris) |
-| `/js/upload-guard.ts` | Helper | Validasi file (format + ukuran) |
-| `/js/cloudinary.ts` | Helper | Upload langsung ke Cloudinary (retry + backoff) |
-| `/js/core/bridge.ts` | Core | ESM bridge → window.* aliases |
-| `/pwa.ts` | Core | Service worker + PWA features |
-
-### 2.3 Backend Actions
-
-| Action | Fungsi | Netlify Function |
-|--------|--------|-----------------|
-| `processAIChat` | Chat dengan AI (Gemini) + auto-update data | `ai-chat` |
-| `getDrafCvMaster` | Load master data (nested format) | `master-data` |
-| `getAppData` | Cek VIP status kandidat | `get-app-data` |
-| `submitDataAsj` | Simpan data + upload files ke Cloudinary | `ai-form-submit` |
-
-### 2.4 Database Tables
-
-| Tabel | Operasi | Keterangan |
-|-------|---------|------------|
-| `master_database_candidate` | READ/WRITE | Master biodata (154 kolom) |
-| `database_candidate` | SYNC | Sync ringkasan ke dashboard |
-
-### 2.5 External Services
-
-| Service | Fungsi |
-|---------|--------|
-| Cloudinary | Upload foto + dokumen (unsigned, retry 3x) |
-| Google Gemini (via backend) | Chat AI + auto-translate ID→JP |
-
----
-
-## 3. Alur Data (Flow)
-
-### 3.1 Page Load
+## 1. Struktur HTML (388 baris)
 
 ```
-1. Browser load ai_form.html
-2. Theme init (THEME_INIT_SCRIPT)
-3. Back button rendered (fixed top-left)
-4. Import map injected (Sentry dummy)
-5. Scripts load (type=module):
-   a. upload-guard.js — file validation
-   b. ai_form.js — form logic + chat AI
-   c. pwa.js — PWA features
-6. Inline IIFE: Parse URL params → window.AI_FORM_CONTEXT
-7. window.onload → initApp():
-   a. Set logo ASJ
-   b. Render language (renderLanguageLight)
-   c. Enable manual editing (enableManualPreview)
-   d. Clean old base64 drafts (bersihkanDraftLamaBase64)
-   e. Restore saved draft from localStorage
-   f. Apply portal context (WA + nama from URL)
-   g. If flow=master + WA exists:
-      - Verify VIP access (verifikasiAksesAiCv)
-      - If VIP → auto-fill from DB (jalankanAutoFill)
-      - If not VIP → redirect to master-full.html
-   h. If flow=apply + WA exists → auto-fill from DB
-   i. If no WA → welcome message (sendWelcomeMessage)
-   j. Update form UI
-   k. Show saved photo/JFT/SSW from DB
-   l. Register resize listener
-```
-
-### 3.2 Chat Flow
-
-```
-1. User types message in #userInput
-2. Enter key or send button → sendMessage()
-3. Append user message to chat box
-4. Save chat history to localStorage
-5. Show typing indicator
-6. Call backend: processAIChat({
-     flow, history, currentData, lang
-   })
-7. Backend (ai-chat.ts):
-   a. Verify session (admin OR kandidat)
-   b. Build context from master data
-   c. Send to Gemini AI
-   d. Parse AI response (reply + data updates)
-   e. Auto-translate new ID→JP fields
-   f. Save updated data to master_database_candidate
-   g. Return { success, reply, data }
-8. Frontend:
-   a. Parse reply (handle nested JSON)
-   b. Append AI message to chat box
-   c. Merge data updates → latestCandidateData
-   d. Update form UI
-   e. Save to localStorage
-```
-
-### 3.3 Save to DB Flow
-
-```
-1. User clicks "SIMPAN DB" → saveToDatabase()
-2. Validate: nama_lengkap must exist
-3. Validate: all file extensions (PDF for docs, JPG/PNG for photos)
-4. Upload files to Cloudinary:
-   a. fotoFile → base64 to File → Cloudinary
-   b. jftFile, sswFile, ktpFile, kkFile → downscale if image → Cloudinary
-   c. ijazahSd/Smp/Sma, univ → PDF or downscale image → Cloudinary
-5. Call backend: submitDataAsj({
-     identitas, fisik, medis, pendidikan, pekerjaan,
-     sertifikasi, keluarga, wawancara, context,
-     fotoFile, jftFile, sswFile, ktpFile, kkFile,
-     ijazahSdFile, ijazahSmpFile, ijazahSmaFile, univFile
-   })
-6. Backend (ai-form-submit.ts):
-   a. Verify session (admin OR kandidat owner)
-   b. Normalize WA
-   c. Upload files to Supabase Storage
-   d. Auto-translate ID→JP via Gemini
-   e. Update master_database_candidate
-   f. Sync to database_candidate
-   g. Return success/failure
-7. Frontend: show success/failure toast
-```
-
-### 3.4 Auto-Fill Flow
-
-```
-1. initApp() calls verifikasiAksesAiCv(wa)
-2. If admin session → skip verification (return true)
-3. If no kandidat session → skip verification (return true)
-4. If kandidat session → call getAppData('kandidat', wa)
-   - Check catatanInt for [VIP] badge
-   - Return true if VIP, false otherwise
-5. If VIP → jalankanAutoFill(wa):
-   a. Show loading indicator
-   b. Call backend: getDrafCvMaster(wa)
-   c. Backend returns nested master data
-   d. Merge with AIDATAJSON (if exists)
-   e. Merge with existing latestCandidateData
-   f. Update form UI
-   g. Save to localStorage
-   h. Generate smart welcome message (detect missing fields)
-   i. Show welcome in chat
+ai_form.html (388 baris)
+├── <!DOCTYPE html><html lang="id"> (1-2)
+├── <head> (3-70)
+│   ├── Meta, CSP (unsafe-inline + unsafe-eval), PWA manifest
+│   ├── Favicon (Supabase CDN)
+│   ├── <!--HEAD_SHARED_START--> (21-26): Font Awesome, fonts.css, Montserrat preload
+│   ├── <style> (27-64): ~40 baris CSS (scrollbar, animations, form micro-styles, responsive)
+│   └── /assets/main.css (69)
+│
+├── <body onload="initApp()" data-page="ai_form"> (71-386)
+│   ├── <!--THEME_INIT_START--> (72-74): Theme loader
+│   ├── Back-to-portal link (75-79): Fixed position
+│   ├── Skip link (80-81): Targets #formPanel
+│   ├── Mobile tab bar (83-86): Chat/Form tabs (md:hidden)
+│   │
+│   ├── #chatPanel (88-106): AI chat interface
+│   │   ├── Header (89-98): Avatar "Qween Jeklin" + green pulse
+│   │   ├── #chatBox (100): Messages container (aria-live="polite")
+│   │   └── Input bar (102-105): #userInput + #sendBtn
+│   │
+│   ├── #formPanel (108-367): Bilingual CV preview form (hidden md:block)
+│   │   ├── Header (111-121): Logo + "PREVIEW CV JEPANG" + SIMPAN DB + lang toggle
+│   │   ├── #aiTypingStatus (123): Hidden AI status bar
+│   │   │
+│   │   ├── Section 1: Identitas & Kontak (125-148) — 20+ fields
+│   │   │   ├── f_nama, f_katakana, f_panggilan, f_panggilan_katakana
+│   │   │   ├── f_tmplahir, f_tgllahir (date), f_umur, f_gender, f_agama
+│   │   │   ├── f_goldar, f_status, f_anak, f_email, f_alamat
+│   │   │   ├── f_hp, f_hpdarurat, f_ktp
+│   │   │   └── f_paspor_status (select), f_paspor, f_sim_status (select), f_sim
+│   │   │
+│   │   ├── Section 2: Fisik (150-161) — 7 fields
+│   │   │   └── f_tb, f_bb, f_tangan, f_sepatu, f_baju, f_topi, f_tahan_ac
+│   │   │
+│   │   ├── Section 3: Medis (163-188) — 13 fields
+│   │   │   ├── f_matakanan, f_matakiri, f_kacamata, f_butawarna
+│   │   │   ├── f_tato, f_rokok, f_alkohol
+│   │   │   └── Bilingual pairs: alergi_id/jp, medis_id/jp, laka_id/jp
+│   │   │
+│   │   ├── Section 4: Wawancara (190-215) — 24 fields
+│   │   │   ├── f_riwayatjepang
+│   │   │   └── Bilingual pairs: promo, lebih, kurang, hobi, keahlian,
+│   │   │       moti, alasan, pulang, keinginan, tujuan (id/jp each)
+│   │   │       + f_lama, f_gaji_yen, f_tabungan
+│   │   │
+│   │   ├── Section 5: Pendidikan/Cert (218-265)
+│   │   │   ├── f_bhs_jepang (datalist: jft-options, 8 items)
+│   │   │   ├── f_nilai, f_lisensi (datalist: ssw-options, 16 items)
+│   │   │   ├── #c_pendidikan (dynamic, max 5)
+│   │   │   ├── #c_pekerjaan (dynamic, max 3)
+│   │   │   └── #c_keluarga (dynamic, max 5)
+│   │   │
+│   │   ├── Kenalan di Jepang (268-285) — 9 fields
+│   │   │   └── f_kenalan_nama/hub/kerja/alamat (id/jp pairs) + f_kenalan_usia
+│   │   │
+│   │   └── Document Uploads (287-363) — 8 file inputs
+│   │       ├── Photo (image/*) → compressImage()
+│   │       ├── JFT (.pdf), SSW (.pdf)
+│   │       ├── KTP (.pdf,image/*), KK (.pdf,image/*)
+│   │       └── Ijazah SD/SMP/SMA/Univ (.pdf,image/*)
+│   │
+│   ├── <!--SCRIPTS_SHARED_START--> (369-385)
+│   │   ├── Toast container, importmap
+│   │   ├── /js/upload-guard.js
+│   │   ├── /js/pages/ai_form.js (main logic)
+│   │   └── /pwa.js
+│   └── </body></html>
 ```
 
 ---
 
-## 4. State Management
+## 2. Partials (3 marker pairs)
 
-### 4.1 Module-Level Variables
-
-| Variable | Type | Fungsi |
-|----------|------|--------|
-| `chatHistory` | Array | Riwayat chat [{role, content}] |
-| `latestCandidateData` | Object | Data kandidat (nested: identitas, fisik, dll) |
-| `currentPhotoBase64` | String | Foto profil (compressed 600px JPEG) |
-| `currentJftBase64` | String | Sertifikat JFT (base64, TIDAK disimpan ke localStorage) |
-| `currentSswBase64` | String | Sertifikat SSW (base64, TIDAK disimpan ke localStorage) |
-| `currentJftFile` | Object | JFT file info {data, name, mime} |
-| `currentSswFile` | Object | SSW file info {data, name, mime} |
-| `currentKtpFile` | Object | KTP file info |
-| `currentKkFile` | Object | KK file info |
-| `currentIjazahSdFile` | Object | Ijazah SD file info |
-| `currentIjazahSmpFile` | Object | Ijazah SMP file info |
-| `currentIjazahSmaFile` | Object | Ijazah SMA file info |
-| `currentUnivFile` | Object | Ijazah Universitas file info |
-| `formContext` | Object | URL params (flow, job, bidang, wa, nama) |
-| `fieldPaths` | Object | Mapping field ID → nested path (70+ mappings) |
-| `lastMobileTab` | String | Tab terakhir aktif di mobile |
-| `wasDesktop` | Boolean | Status desktop/mobile saat ini |
-
-### 4.2 localStorage Keys
-
-| Key Pattern | Isi |
-|-------------|-----|
-| `asj_qween_cv_data_{wa}_{job}` | Draft: chatHistory + latestCandidateData + currentPhotoBase64 |
-| `asj_theme` | Theme preference (dark/SAKURA) |
-| `asj_lang` | Language preference (id/jp) |
-| `asj_kandidat_login` | Login status ('sukses') |
-| `asj_kandidat_session` | Session token |
-| `asj_admin_login` |
- Admin login status |
-| `asj_admin_session` | Admin session token |
-
-### 4.3 fieldPaths (70+ Mappings)
-
-```
-f_nama → identitas.nama_lengkap
-f_katakana → identitas.katakana
-f_panggilan → identitas.panggilan
-f_tb → fisik.tb
-f_bb → fisik.bb
-f_matakanan → medis.mata_kanan
-f_promo_id → wawancara.promosi_id
-f_promo_jp → wawancara.promosi_jp
-f_bhs_jepang → sertifikasi.bahasa_jepang
-f_kenalan_nama_id → kenalan_jepang.nama_id
-... (70+ total)
-```
+| Marker | Lines | Partial File | Isi |
+|--------|-------|-------------|-----|
+| `HEAD_SHARED` | 21-26 | `partials/head-shared.html` | Font Awesome, fonts.css, Montserrat preload |
+| `THEME_INIT` | 72-74 | `partials/theme-init.html` | Theme loader script |
+| `SCRIPTS_SHARED` | 369-385 | `partials/scripts-shared.html` | Toast, importmap, module scripts |
 
 ---
 
-### 5.1 UX Issues
+## 3. AI Chat Section (lines 88-106)
 
-| Issue | Severity | Deskripsi |
-|-------|----------|-----------|
-| No back button (FIXED) | High | ✅ Sudah ditambahkan tombol "Portal" |
-| No offline fallback | Medium | Chat + save DB gagal tanpa internet |
-| No loading skeleton | Low | Tidak ada skeleton saat fetch data |
-| No error boundary | Low | Error JS tidak ditangkap dengan baik |
-| No undo | Low | Tidak bisa undo perubahan form |
+**Header:** "Qween Jeklin" avatar (Supabase CDN), green pulse status indicator.
 
-### 5.2 Technical Issues
+**Message flow:**
+1. User types in `#userInput` → Enter or #sendBtn → `sendMessage()`
+2. Messages appended to `#chatBox` (aria-live="polite")
+3. AI responses rendered dynamically by JS
 
-| Issue | Severity | Deskripsi |
-|-------|----------|-----------|
-| window.onload conflict | Low | Bisa conflict dengan script lain |
-| No abort controller (chat) | Medium | Tidak bisa cancel chat request |
-| localStorage quota | Medium | Draft bisa penuh (photo base64) |
-| 9 file uploads | Low | Tidak ada parallel upload |
-| VIP guard race condition | Low | Multiple calls possible during verify |
-
-### 5.3 Security Issues
-
-| Issue | Severity | Deskripsi |
-|-------|----------|-----------|
-| No rate limiting (chat) | Medium | processAIChat tidak dilimit |
-| No rate limiting (save) | Medium | submitDataAsj tidak dilimit |
-| XSS in chat | Low | escapeHtml applied, but bold regex could leak |
-| File type bypass | Low | upload-guard validates, but base64 conversion could bypass |
+**Input:** `#userInput` (text, aria-label="Ketik pesan") + `#sendBtn` (disabled state via JS).
 
 ---
 
-### 6.1 Back Button (2026-08-27)
+## 4. Bilingual Form Section (lines 108-367)
 
-```html
-<a href="/" class="fixed top-4 left-4 z-[100] flex items-center gap-2 px-4 py-2 bg-black/70 hover:bg-black/90 text-white text-xs font-bold rounded-full border border-white/20 backdrop-blur-sm transition-all shadow-lg hover:scale-105" aria-label="Kembali ke Portal">
-  <i class="fas fa-arrow-left"></i>
-  <span class="hidden sm:inline">Portal</span>
-</a>
-```
+**All inputs are `readonly`** (66 instances). Form is display-only, not editable.
 
----
+### Field Count
 
-## 5. Build Pipeline
+| Type | Count |
+|------|-------|
+| Text inputs (readonly) | 44 |
+| Date inputs | 1 |
+| Textarea (bilingual ID/JP pairs) | 18 |
+| Select (readonly) | 2 |
+| File inputs | 8 |
+| Datalists | 3 |
+| **Total** | **76** |
 
-| File | Role |
-|------|------|
-| `ai_form.html` | HTML template (412 baris) |
-| `js/pages/ai_form.ts` | Entry point (1267 baris) |
-| `js/upload-guard.ts` | File validation (110 baris) |
-| `js/cloudinary.ts` | Cloudinary upload (120 baris) |
-| `js/core/bridge.ts` | ESM bridge (470 baris) |
-| `pwa.ts` | PWA features (350 baris) |
+### Key Sections
 
----
+- **Section 1 — Identitas & Kontak (20+ fields):** nama, katakana, panggilan, tmplahir, tgllahir, umur, gender, agama, goldar, status, anak, email, alamat, hp, hpdarurat, ktp, paspor, sim
+- **Section 2 — Fisik (7):** tb, bb, tangan, sepatu, baju, topi, tahan_ac
+- **Section 3 — Medis (13):** mata, kacamata, butawarna, tato, rokok, alergi (id/jp), medis (id/jp), laka (id/jp)
+- **Section 4 — Wawancara (24):** 10 bilingual textarea pairs (promo, lebih, kurang, hobi, keahlian, moti, alasan, pulang, keinginan, tujuan) + lama, gaji_yen, tabungan
+- **Section 5 — Pendidikan/Cert:** bhs_jepang (datalist), nilai, lisensi (datalist) + 3 dynamic containers
+- **Kenalan di Jepang (9):** 4 bilingual pairs + usia
+- **Uploads (8):** photo, jft, ssw, ktp, kk, ijazah SD/SMP/SMA, univ
 
-## 6. Key Functions
+### Datalists
 
-| Function | Fungsi |
-|----------|--------|
-| `initApp()` | Entry point: load data, verify VIP, auto-fill |
-| `sendMessage()` | Send chat message to AI backend |
-| `saveToDatabase()` | Upload files + save all data to DB |
-| `updateFormUI()` | Sync form fields with latestCandidateData |
-| `enableManualPreview()` | Make readonly fields editable |
-| `compressImage()` | Compress photo to 600px JPEG |
-| `handleDocUpload()` | Handle document upload (downscale if image) |
-| `switchTab()` | Toggle chat/form panels (mobile) |
-| `verifikasiAksesAiCv()` | Check VIP status before opening AI CV |
-| `jalankanAutoFill()` | Load master data from DB |
-| `mergeCandidateData()` | Deep merge nested objects |
-| `generateSmartWelcomeMessage()` | Detect missing fields + generate welcome (17 fields checked) |
-| `withRetry()` | Retry API calls (2 attempts, 2s delay) |
-| `saveToLocal()` | Auto-save to localStorage (every 30s + on input) |
-
-## 7. Improvements (10/10 — 2026-08-27)
-
-| # | Improvement | Status | Detail |
-|---|-------------|--------|--------|
-| 1 | Chat history trim | Fixed | Last 20 messages only (prevents Gemini token overflow) |
-| 2 | Smart welcome expanded | Fixed | Checks 17 fields (was 8): kelebihan, kekurangan, motivasi, alasan, rencana, tujuan, sertifikasi |
-| 3 | Auto-save interval | Fixed | 30s interval + on input events (prevents data loss) |
-| 4 | Button reset in catch | Fixed | saveToDatabase outer catch properly resets button state |
-| 5 | Double autoTranslate removed | Fixed | Only runs on aiData (was running twice, doubling Gemini calls) |
-| 6 | i18n keys expanded | Fixed | 7 new keys for ID + JP (chat_missing_*) |
-| 7 | Retry mechanism | Existing | withRetry (2 attempts, 2s delay) on all API calls |
-| 8 | Parallel uploads | Existing | Promise.all for Cloudinary uploads |
-| 9 | Progress indicator | Existing | "Mengunggah dokumen..." + "Menyimpan data..." |
-| 10 | aria-labels | Existing | 5 elements with aria-label + aria-live |
+| ID | Options |
+|----|---------|
+| `jft-options` | N1-N5, JFT BASIC A2, BELUM LULUS, BELUM TES |
+| `ssw-options` | 16 SSW occupation categories |
+| `pekerjaan-options` | 23 job types |
 
 ---
 
-## 8. E2E Tests
+## 5. i18n
 
-| File | Assertions | Categories |
-|------|-----------|------------|
-| `e2e/ai_form-test.mjs` | ~40 | 14 (load, back, split, chat, form, upload, tab, typing, save, a11y, i18n, pwa, theme, errors) |
+| Attribute | Count |
+|-----------|-------|
+| `data-lang` | 84 |
+| `data-lang-placeholder` | 1 |
+| `data-lang-aria` | 1 |
+| **Total** | **86** |
 
-### Jalankan
-Node e2e/ai_form-test.mjs membutuhkan dev server di localhost:3000.
+- Namespace: `form.ai_*` (form-specific), `a11y.*`, `ui.*` (shared)
+- Language toggle: button at line 120 calls `toggleFormLanguage(); updateFormUI();`
+
+---
+
+## 6. External Resources
+
+### Images
+
+| Line | URL | Purpose |
+|------|-----|---------|
+| 92 | `gdwvffmevwtwnzrapjwy.supabase.co/.../jeklin.png` | Chat avatar |
+| 13-14 | `gdwvffmevwtwnzrapjwy.supabase.co/.../logo-removebg-preview.webp` | Favicon |
+
+### CSS/JS
+
+| File | Purpose |
+|------|---------|
+| `/vendor/font-awesome/css/all.min.css` | Icons |
+| `/fonts/fonts.css` | Custom fonts |
+| `/assets/main.css` | Tailwind bundle |
+| `<style>` inline (40 lines) | Custom page CSS |
+| `/js/pages/ai_form.js` | Main logic |
+| `/js/upload-guard.js` | File validation |
+| `/pwa.js` | SW registration |
+
+---
+
+## 7. CSS Approach
+
+- **Hybrid:** 40 lines inline `<style>` + Tailwind from `main.css`
+- **Dark theme:** `#020617` bg, glassmorphism
+- **Responsive:** `@media (max-width: 767px)` for mobile panels (100dvh, safe-area padding)
+- **Touch targets:** 44px min on mobile for chat input/button
+- **3 inline `style=`** attributes (f_paspor_status width, f_sim_status width, body height)
+
+---
+
+## 8. JavaScript
+
+### Entry Point
+`/js/pages/ai_form.js` — ESM module, registers functions globally via `registerSeamAliases`
+
+### URL Parameters
+
+| Param | Variable | Purpose |
+|-------|----------|---------|
+| `flow` | `a` | Conversation flow |
+| `job` | - | Job context |
+| `bidang` | - | Field/specialization |
+| `wa` | `t()` result | WhatsApp number (sanitized) |
+| `nama` | - | Candidate name |
+
+Exposed as `window.AI_FORM_CONTEXT = { flow, job, bidang, wa, nama }`.
+
+### Key Functions (from HTML)
+
+| Function | Called From | Purpose |
+|----------|------------|---------|
+| `initApp()` | body onload (71) | Page initialization |
+| `switchTab('chat')` | #btnTabChat (84) | Show chat panel (mobile) |
+| `switchTab('form')` | #btnTabForm (85) | Show form panel (mobile) |
+| `handleEnter(event)` | #userInput onkeypress (103) | Send on Enter |
+| `sendMessage()` | #sendBtn onclick (104) | Send chat message |
+| `saveToDatabase()` | #btnSaveDB (119) | Submit to API |
+| `toggleFormLanguage()` | Lang button (120) | Switch ID/JP labels |
+| `updateFormUI()` | Lang button (120) | Refresh form display |
+| `compressImage(event)` | Photo upload (292) | Client-side JPEG compress |
+| `handleDocUpload(event, type)` | 7 doc uploads (301-360) | Handle file selection |
+
+---
+
+## 9. Accessibility
+
+### Present
+
+- 5 `aria-label` (portal link, tab buttons, userInput, sendBtn, btnSaveDB)
+- 3 `aria-live="polite"` (chatBox, aiTypingStatus, toast-container)
+- Skip link targeting #formPanel
+- Touch targets 44px on mobile
+
+### Missing
+
+- **0 of 74 labels** have `for` attribute — WCAG 2.1 SC 1.3.1 failure
+- No `role` attributes
+- No `aria-describedby` for error/status messages
+- No focus management on tab switch
+
+---
+
+## 10. Issues Found
+
+### Critical
+
+| # | Line | Issue |
+|---|------|-------|
+| 1 | 100 | **Broken class attribute** — `class="flex-1 overflow-y-auto"` closes early; `p-3 space-y-4 pb-24 md:pb-4` are bare attributes outside class. ChatBox will lack padding/spacing. |
+
+### Structural
+
+| # | Line | Issue |
+|---|------|-------|
+| 2 | 1 | **Missing `<!DOCTYPE html>` and `<html lang>`** — file starts with `<head>` directly |
+| 3 | 71 | **`onload="initApp()"` with `type="module"`** — timing-dependent on registerSeamAliases |
+| 4 | - | **All 66 inputs readonly** — form is display-only, contradicts "Edit manual aktif" label |
+| 5 | - | **No `<form>` element** — all submission via JS |
+| 6 | - | **0/74 labels have `for`** — broken programmatic association |
+| 7 | 295 | **Photo preview `alt=""`** — meaningful image has empty alt |
+
+### Accessibility
+
+| # | Issue |
+|---|-------|
+| 1 | No `role="dialog"` on any modal |
+| 2 | No focus trap in modals |
+| 3 | No `aria-describedby` linking error messages to inputs |
+
+---
+
+## 11. Key Functions Referenced
+
+`initApp`, `switchTab`, `handleEnter`, `sendMessage`, `saveToDatabase`, `toggleFormLanguage`, `updateFormUI`, `compressImage`, `handleDocUpload`
