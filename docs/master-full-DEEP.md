@@ -1,264 +1,289 @@
 # master-full.html — Deep Analysis
 
-> Halaman form master biodata 5 langkah + gerbang login kandidat. Dianalisis sampai akar pada 2026-08-27.
+> Deep scan: 2026-09-11. Standalone page (type="module") — 5-step master biodata form + login gate.
+> Entry point: `js/pages/master_full.ts` → `js/pages/master_full.js`
 
-## 1. Arsitektur Halaman
-
-```
-master-full.html (372 baris)
-├── <head> — Meta, CSS inline, shared partials
-├── <body> — Form wizard 5 langkah
-│   ├── HERO SECTION — Logo + background + language toggle
-│   ├── LOGIN GATE — Password verification modal
-│   ├── STEPPER — 5 langkah (Identitas → Medis → Riwayat → Keluarga → Dokumen)
-│   ├── STEP 1: Identitas Dasar — Form input (40+ field)
-│   ├── STEP 2: Medis & Wawancara — Medical + interview fields
-│   ├── STEP 3: Riwayat — Pendidikan (5) + Pekerjaan (3)
-│   ├── STEP 4: Keluarga — Anggota keluarga (5) + Kontak darurat + Kenalan di Jepang
-│   └── STEP 5: Dokumen — Paspor + Sertifikasi + Upload (9 file)
-├── NAV BAR — Prev/Draft/Next/Submit buttons
-└── SCRIPTS — ESM modules
-```
-
-## 2. Dependensi Lengkap
-
-### 2.1 CSS
-
-| File | Tipe | Keterangan |
-|------|------|------------|
-| `/vendor/font-awesome/css/all.min.css` | External | Ikon Font Awesome |
-| `/fonts/fonts.css` | Local | Custom fonts (Montserrat) |
-| `/assets/main.css` | Build | Tailwind CSS bundle |
-| `<style>` inline | Inline | ~80 baris CSS kustom |
-
-### 2.2 JavaScript (ESM)
-
-| File | Tipe | Fungsi |
-|------|------|--------|
-| `/js/pages/master_full.ts` | Entry point | Form wizard, validation, submit (812 baris) |
-| `/js/upload-guard.ts` | Helper | Validasi file (format + ukuran) |
-| `/js/cloudinary.ts` | Helper | Upload langsung ke Cloudinary |
-| `/js/core/bridge.ts` | Core | ESM bridge → window.* aliases |
-| `/pwa.ts` | Core | Service worker + PWA features |
-
-### 2.3 Backend Actions
-
-| Action | Fungsi | Endpoint |
-|--------|--------|----------|
-| `loginKandidat` | Login kandidat | `auth` |
-| `getMasterDataByWa` | Load master data | `master-data` |
-| `submitMasterForm` | Submit master data | `master-data` |
-
-### 2.4 Database Tables
-
-| Tabel | Operasi | Keterangan |
-|-------|---------|------------|
-| `master_database_candidate` | INSERT/UPDATE | Master biodata (154 kolom) |
-| `database_candidate` | PATCH | Sync ringkasan ke dashboard |
-
----
-
-## 3. Alur Data (Flow)
-
-### 3.1 Page Load
+## 1. Struktur HTML (379 baris)
 
 ```
-1. Browser load master-full.html
-2. Theme init (THEME_INIT_SCRIPT)
-3. Back button rendered (fixed top-left)
-4. Language toggle rendered (JP/ID)
-5. Login gate modal (hidden by default)
-6. Hero section renders
-7. Form wizard renders (Step 1 active)
-8. Scripts load:
-   a. upload-guard.js — load file validation
-   b. master_full.js — load form logic
-   c. pwa.js — load PWA features
-9. window.onload fires:
-   a. Render dynamic fields (edu/job/fam containers)
-   b. Build dropdown SSW + Pekerjaan
-   c. Read URL params (?wa=&nama=)
-   d. If WA exists:
-      - Check session (localStorage)
-      - If no session → show login gate
-      - If session exists → load master data from backend
-      - Auto-fill all fields from database
-   e. If no WA → preview mode (no auto-fill)
-```
-
-### 3.2 Login Gate Flow
-
-```
-1. User opens form without session
-2. Login gate modal appears
-3. User enters password
-4. gateLogin() calls backend: loginKandidat([wa, pass])
-5. Backend:
-   a. Normalize WA
-   b. Find candidate by WA
-   c. Verify password (bcrypt)
-   d. Generate session token (HMAC)
-   e. Return success + sessionToken
-6. Frontend:
-   a. Save session to localStorage
-   b. Reload page
-   c. Page load detects session → loads master data
-```
-
-### 3.3 Form Submission
-
-```
-1. User fills Step 1-5
-2. User clicks "Simpan Final" → submitMaster(false)
-3. submitMaster():
-   a. Check session exists
-   b. Validate nama (required for final submit)
-   c. Show loading modal
-   d. Collect all form data (50+ fields)
-   e. Upload files to Cloudinary (if new)
-   f. Call backend: submitMasterForm([payload])
-   g. Backend:
-      - Verify session (admin or kandidat)
-      - Normalize WA
-      - Find/create master row
-      - Upload files (if any)
-      - Auto-translate ID → JP (Gemini)
-      - Compare old vs new values
-      - Update master_database_candidate
-      - Sync to database_candidate
-      - Send mail inbox (if biodata changed)
-   h. Show success/failure alert
+master-full.html (379 baris)
+├── <!DOCTYPE html><html lang="id"> (1-2)
+├── <head> (3-66)
+│   ├── Meta, CSP, PWA manifest
+│   ├── <!--HEAD_SHARED_START--> (19-24): Font Awesome, fonts.css, Montserrat preload
+│   ├── <style> (25-64): ~40 baris CSS kustom (hero, glass, stepper, forms)
+│   └── /assets/main.css (65)
+│
+├── <body data-page="master-full"> (67)
+│   ├── <!--THEME_INIT_START--> (68-70): Theme loader
+│   ├── Back-to-portal link (72-75): Fixed position
+│   ├── Skip link (77): WCAG 2.4.1
+│   ├── Loading overlay (78-81)
+│   ├── Hero banner (83-92): Background + logo + title + lang toggle
+│   │
+│   ├── <main id="main-content"> (94-331)
+│   │   └── .glass card (95-330)
+│   │       ├── Stepper (97-104): 5 indicators
+│   │       │
+│   │       ├── STEP 1: Identitas (107-157) — 32 fields
+│   │       │   ├── #wa (hidden), #nama, #furigana, #panggilan, #panggilanKatakana
+│   │       │   ├── #tempatLahir, #tglLahir (date), #usia (number)
+│   │       │   ├── #gender (select), #agama (select), #statusNikah (select)
+│   │       │   ├── #anak (number), #ktp (number), #sim
+│   │       │   ├── #alamat (textarea), #email
+│   │       │   ├── #tb, #bb, #baju, #sepatu, #topi
+│   │       │   └── #goldar, #tangan, #tahanAc (selects)
+│   │       │
+│   │       ├── STEP 2: Medis & Wawancara (160-196) — 18 fields
+│   │       │   ├── #mataKiri, #mataKanan, #kacamata, #butaWarna (selects)
+│   │       │   ├── #tato, #tindik, #merokok, #alkohol (selects)
+│   │       │   ├── #penyakit, #alergi, #laka (textareas)
+│   │       │   ├── #promosi (textarea), #kelebihan, #kekurangan
+│   │       │   ├── #keahlianKhusus, #hobi
+│   │       │   ├── #alasanBidang, #motivasiJepang, #keinginan, #rencanaPulang (textareas)
+│   │       │   └── #tujuanJepang, #lamaJepang, #gajiYen, #tabungan
+│   │       │
+│   │       ├── STEP 3: Riwayat (199-204) — Dynamic containers
+│   │       │   ├── #edu-container (max 5 education entries)
+│   │       │   └── #job-container (max 3 work entries)
+│   │       │
+│   │       ├── STEP 4: Keluarga & Kontak (207-232)
+│   │       │   ├── #fam-container (max 5 family entries)
+│   │       │   ├── Emergency: #daruratNama, #daruratHubungan, #daruratWa
+│   │       │   └── Japan: #kenalanNama, #kenalanUsia, #kenalanHubungan, #kenalanPekerjaan, #kenalanAlamat
+│   │       │
+│   │       └── STEP 5: Dokumen (235-328) — 9 file uploads
+│   │           ├── #noCoe, #noPaspor, #tglTerbitPaspor, #expPaspor, #kotaPaspor
+│   │           ├── #eksJepang (select), #bhsJepang (select)
+│   │           ├── #nilai, #lisensi (select), #lisensi2 (select)
+│   │           ├── #photo (.jpg/.jpeg/.png)
+│   │           ├── #jft (.pdf), #ssw (.pdf)
+│   │           ├── #ijazahSd, #ijazahSmp, #ijazahSma (.pdf,image/*)
+│   │           ├── #univ (.pdf,image/*)
+│   │           └── #ktpFile, #kk (.pdf,image/*)
+│   │
+│   ├── Sticky bottom nav (333-339): btnPrev, Draft, unsaved-badge, btnNext, btnSubmit
+│   │
+│   ├── Login gate (341-356): Password overlay
+│   │   ├── #gate-wa: Display WA number
+│   │   ├── #gate-pass: Password input
+│   │   ├── #gate-btn: Masuk button
+│   │   └── #gate-msg: Error message
+│   │
+│   └── <!--SCRIPTS_SHARED_START--> (360-377)
+│       ├── Toast container, importmap
+│       ├── /js/upload-guard.js
+│       ├── /js/pages/master_full.js (main logic)
+│       └── /pwa.js
 ```
 
 ---
 
-```html
-<!-- BACK TO PORTAL -->
-<a href="/" class="fixed top-4 left-4 z-[100] flex items-center gap-2 px-4 py-2 bg-black/70 hover:bg-black/90 text-white text-xs font-bold rounded-full border border-white/20 backdrop-blur-sm transition-all shadow-lg hover:scale-105" aria-label="Kembali ke Portal">
-  <i class="fas fa-arrow-left"></i>
-  <span class="hidden sm:inline">Portal</span>
-</a>
-```
+## 2. Partials (3 marker pairs)
+
+| Marker | Lines | Partial File | Isi |
+|--------|-------|-------------|-----|
+| `HEAD_SHARED` | 19-24 | `partials/head-shared.html` | Font Awesome, fonts.css, Montserrat preload |
+| `THEME_INIT` | 68-70 | `partials/theme-init.html` | Theme loader script |
+| `SCRIPTS_SHARED` | 360-377 | `partials/scripts-shared.html` | Toast, importmap, module scripts |
 
 ---
 
-## 4. Backend Flow Detail
+## 3. Login Gate (lines 341-356)
 
-### 6.1 submitMasterForm Action
+Full-screen overlay (`#login-gate`) — hidden by default, z-50 bg-black/85.
 
-```
-Input: payload[0] = {
-  wa: string,
-  nama: string,
-  furigana: string,
-  panggilan: string,
-  panggilanKatakana: string,
-  gender: string,
-  tempatLahir: string,
-  tglLahir: string,
-  usia: string,
-  agama: string,
-  statusNikah: string,
-  anak: string,
-  ktp: string,
-  sim: string,
-  alamat: string,
-  email: string,
-  tb: string,
-  bb: string,
-  goldar: string,
-  tangan: string,
-  baju: string,
-  sepatu: string,
-  topi: string,
-  tahanAc: string,
-  mataKiri: string,
-  mataKanan: string,
-  kacamata: string,
-  butaWarna: string,
-  tato: string,
-  tindik: string,
-  merokok: string,
-  alkohol: string,
-  penyakit: string,
-  alergi: string,
-  laka: string,
-  promosi: string,
-  kelebihan: string,
-  kekurangan: string,
-  keahlianKhusus: string,
-  hobi: string,
-  alasanBidang: string,
-  motivasiJepang: string,
-  keinginan: string,
-  rencanaPulang: string,
-  tujuanJepang: string,
-  lamaJepang: string,
-  gajiYen: string,
-  tabungan: string,
-  bhsJepang: string,
-  nilai: string,
-  lisensi: string,
-  eksJepang: string,
-  daruratNama: string,
-  daruratHubungan: string,
-  daruratWa: string,
-  kenalanNama: string,
-  kenalanHubungan: string,
-  kenalanPekerjaan: string,
-  kenalanUsia: string,
-  kenalanAlamat: string,
-  pendidikan: [{tingkat, namaSekolah, jurusan, tahunMasuk, tahunLulus}] (5 items),
-  pekerjaan: [{namaPt, tahunMasuk, tahunKeluar, jabatan, gaji}] (3 items),
-  keluarga: [{hubungan, nama, usia, pekerjaan, pendapatan}] (5 items),
-  noPaspor: string,
-  tglTerbitPaspor: string,
-  expPaspor: string,
-  kotaPaspor: string,
-  noCoe: string,
-  photoFile: string (URL),
-  jftFile: string (URL),
-  sswFile: string (URL),
-  ijazahSdFile: string (URL),
-  ijazahSmpFile: string (URL),
-  ijazahSmaFile: string (URL),
-  univFile: string (URL),
-  ktpFile: string (URL),
-  kkFile: string (URL)
-}
+**Flow:**
+1. WA number from URL/QR displayed in `#gate-wa`
+2. User enters password in `#gate-pass`
+3. Enter key or "Masuk" button → `gateLogin()`
+4. Error shown in `#gate-msg`
+5. Success → hides gate, shows form
 
-Output: {
-  success: boolean,
-  sessionInvalid: boolean,
-  message: string,
-  translationSkipped: boolean
-}
-
-Processing:
-1. Verify session (admin or kandidat)
-2. Normalize WA
-3. Find/create master row
-4. Upload files (if any) to Cloudinary
-5. Auto-translate ID → JP via Gemini
-6. Compare old vs new values (changedLabels)
-7. Update master_database_candidate (154 kolom)
-8. Sync to database_candidate
-9. Send mail inbox (if biodata changed)
-10. Return success/failure
-```
+**Security:** WA alone is not sufficient; password + server session required.
 
 ---
 
-| Test File | Coverage |
-|-----------|----------|
-| `scripts/__tests__/apply-docs.test.js` | applyDocsPlan function |
+## 4. Forms & Inputs
 
-| Test File | Coverage |
+**No `<form>` element.** All fields managed by JS via DOM `id`.
 
-## 5. E2E Tests
+### Field Count
 
-| Test File | Coverage |
-|-----------|----------|
-| `e2e/master-full-test.mjs` | Page load, back button, form inputs+aria, URL auto-fill, stepper, nav buttons, login gate, i18n, PWA, theme, key functions |
+| Type | Count |
+|------|-------|
+| Text inputs | ~35 |
+| Number inputs | ~10 |
+| Date inputs | 4 |
+| Email inputs | 1 |
+| Select elements | 16 |
+| Textarea elements | 9 |
+| File inputs | 9 |
+| Hidden inputs | 3 (wa, lisensi_manual, lisensi2_manual) |
+| Password (gate) | 1 |
+| **Total** | **~88** |
 
-Run: `node e2e/master-full-test.mjs` (15 categories, 30+ assertions)
+### Key Fields by Step
+
+**Step 1 — Identitas (32 fields):**
+nama, furigana, panggilan, tempatLahir, tglLahir, usia, gender, agama, statusNikah, anak, ktp (NIK), sim, alamat, email, tb, bb, baju, sepatu, topi, goldar, tangan, tahanAc
+
+**Step 2 — Medis & Wawancara (18 fields):**
+mataKiri, mataKanan, kacamata, butaWarna, tato, tindik, merokok, alkohol, penyakit, alergi, laka, promosi, kelebihan, kekurangan, keahlianKhusus, hobi, alasanBidang, motivasiJepang, keinginan, rencanaPulang, tujuanJepang, lamaJepang, gajiYen, tabungan
+
+**Step 3 — Riwayat (dynamic):**
+edu-container (max 5), job-container (max 3)
+
+**Step 4 — Keluarga & Kontak:**
+fam-container (max 5), daruratNama, daruratHubungan, daruratWa, kenalanNama, kenalanUsia, kenalanHubungan, kenalanPekerjaan, kenalanAlamat
+
+**Step 5 — Dokumen (9 uploads + 6 fields):**
+noCoe, noPaspor, tglTerbitPaspor, expPaspor, kotaPaspor, eksJepang, bhsJepang, nilai, lisensi, lisensi2, photo, jft, ssw, ijazahSd/Smp/Sma, univ, ktpFile, kk
+
+---
+
+## 5. Step Flow
+
+```
+Login Gate → Step 1 (Identitas) → Step 2 (Medis) → Step 3 (Riwayat) → Step 4 (Keluarga) → Step 5 (Dokumen) → Submit
+                ↑                                              │
+                └────────────────[Kembali]─────────────────────┘
+```
+
+- `f` = current step (JS variable)
+- Stepper indicators: `#ind-1` to `#ind-5`
+- `.step.active` = blue highlight, `.step.completed` = darker blue
+- `#btnPrev` hidden on step 1
+- `#btnSubmit` hidden until step 5
+- Draft button always visible
+- `#unsaved-badge` pulses when changes detected
+
+---
+
+## 6. i18n
+
+| Metric | Count |
+|--------|-------|
+| `data-lang` | 124 |
+| `data-lang-placeholder` | 33 |
+| **Total** | **157** |
+
+- Namespace: `form.mf_*` (90 keys), `candidate.*` (10 keys)
+- Language toggle: button at line 91 calls `toggleFormLanguage()`
+- Selector options also translated (gender, religion, etc.)
+
+---
+
+## 7. External Resources
+
+### Images
+
+| Line | URL | Purpose |
+|------|-----|---------|
+| 84 | `images.unsplash.com/photo-1493976040374-85c8e12f0c0e` | Hero background |
+| 87 | `/assets/logo.png?v=5d2cdd9479` | ASJ logo |
+
+### CSS/JS
+
+| File | Purpose |
+|------|---------|
+| `/vendor/font-awesome/css/all.min.css` | Icons |
+| `/fonts/fonts.css` | Custom fonts |
+| `/assets/main.css` | Tailwind bundle |
+| `<style>` inline (40 lines) | Custom page CSS |
+| `/js/pages/master_full.js` | Main logic |
+| `/js/upload-guard.js` | File validation |
+| `/pwa.js` | SW registration |
+
+---
+
+## 8. CSS Approach
+
+- **Hybrid:** 40 lines inline `<style>` + Tailwind from `main.css`
+- **Dark theme:** `#020617` bg, `#38bdf8` sky-blue accent, glassmorphism
+- **Only 1 inline `style=`** on `#btnPrev` (display:none)
+- Custom tokens in CSS (`#38bdf8`, `#020617`) vs Tailwind (`sky-500`, `slate-950`)
+
+---
+
+## 9. JavaScript
+
+### Entry Point
+`/js/pages/master_full.js` — ESM module, imports via `bridge.js` (i18n + api-client)
+
+### Script Tags
+
+| Line | Source | Purpose |
+|------|--------|---------|
+| 69 | Inline | Theme init |
+| 366-372 | importmap | Maps `@sentry/browser` to dummy |
+| 373 | `/js/upload-guard.js` | File validation |
+| 375 | `/js/pages/master_full.js` | Main logic |
+| 376 | `/pwa.js` | SW registration |
+
+### Key Functions (from HTML)
+
+| Function | Called From | Purpose |
+|----------|------------|---------|
+| `toggleFormLanguage()` | Line 91 (onclick) | Switch ID/JP labels |
+| `changeStep(-1)` | Line 334 (btnPrev) | Previous step |
+| `changeStep(1)` | Line 337 (btnNext) | Next step |
+| `submitMaster(true)` | Line 336 (Draft) | Save draft |
+| `submitMaster(false)` | Line 338 (btnSubmit) | Final submit |
+| `gateLogin()` | Line 352 (Enter) + 353 (btn) | Authenticate |
+| `handleFile(this, 'XxxInfo')` | 9 file inputs (onchange) | Process file selection |
+| `onSswSelect('lisensi')` | Line 252 (onchange) | SSW 1 select handler |
+| `onSswSelect('lisensi2')` | Line 253 (onchange) | SSW 2 select handler |
+
+---
+
+## 10. URL Parameters
+
+Not read in HTML — handled by `master_full.js`. Likely: `?wa=628xxx` (from QR code).
+
+---
+
+## 11. Accessibility
+
+### Present
+
+- 7 `aria-label` attributes (portal link, wa, nama, furigana, tglLahir, gender, alamat, email, btnPrev, btnNext, gate-pass)
+- 11 `aria-live="polite"` (loading, 9 file info divs, toast)
+- 66 `<label>` elements
+- Skip link present
+- `<main tabindex="-1">` for skip target
+
+### Missing
+
+- Only **1 of 66 labels** has `for` attribute (gate-pass)
+- No `role` attributes anywhere
+- No `aria-describedby` for error messages
+- No `aria-required` on mandatory fields
+- No `<fieldset>` / `<legend>` for grouping
+- No focus management on step change
+
+---
+
+## 12. Issues Found
+
+### Structural
+
+| # | Severity | Issue | Line |
+|---|----------|-------|------|
+| 1 | 🟡 Medium | **No `<form>` element** — all validation/submission via JS | Global |
+| 2 | 🟡 Medium | **`ktp` (NIK) uses `type="number"`** — 16-digit ID may truncate/allow decimals | 134 |
+| 3 | 🟡 Medium | **`daruratWa` uses `type="number"`** — WA numbers should be text | 216 |
+| 4 | 🟢 Low | **Only 1/66 labels has `for`** — breaks programmatic association | Multiple |
+| 5 | 🟢 Low | **27 inline `onclick` handlers** — could use addEventListener | Multiple |
+| 6 | 🟢 Low | **`lisensi`/`lisensi2` empty selects** — populated by JS | 252-253 |
+
+### Pre-existing
+
+1. **Div imbalance: 175 open / 176 close** — was already present before our changes.
+2. **Missing `</main>`** — opened at line 94, not explicitly closed.
+
+---
+
+## 13. Key Functions Referenced
+
+`toggleFormLanguage`, `changeStep`, `submitMaster`, `gateLogin`, `handleFile`, `onSswSelect`, `showToast`
