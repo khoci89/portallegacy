@@ -84,7 +84,7 @@ const SHARE_LANG = {
 // antara share.html dan index.html/admin.html.
 // Simple toast for share page (no dependency on index bundle)
 function shareToast(msg, type) {
-  var d = document.createElement('div');
+  const d = document.createElement('div');
   d.className = 'fixed top-20 left-1/2 -translate-x-1/2 z-[200] px-5 py-3 rounded-xl font-bold text-sm shadow-2xl transition-all';
   d.style.cssText = 'background:' + (type === 'error' ? '#991b1b' : type === 'success' ? '#065f46' : '#1e40af') + ';color:#fff;border:1px solid ' + (type === 'error' ? '#fca5a5' : type === 'success' ? '#6ee7b7' : '#93c5fd') + ';';
   d.textContent = msg;
@@ -197,7 +197,7 @@ export function submitSelection() {
 // Tipe yang bisa ditampilkan INLINE: gambar/PDF native + format Office
 // (xls/xlsx/doc/docx/ppt/pptx) — dirender client-side (SheetJS/mammoth).
 function isPreviewableFile(url) {
-  var u = String(url || '').toLowerCase();
+  const u = String(url || '').toLowerCase();
   if (/[.](jpe?g|png|gif|webp|bmp|svg|pdf)([?#].*)?$/i.test(u)) return true;
   if (/[.](xls|xlsx|xlsm|doc|docx|ppt|pptx|odt|ods|odp|txt|rtf|csv)([?#].*)?$/i.test(u))
     return true;
@@ -206,13 +206,13 @@ function isPreviewableFile(url) {
 
 // URL aman untuk iframe per tipe (sama dengan previewFinalUrl di 02_init.js).
 function previewFinalUrl(url) {
-  var u = String(url || '');
-  var lower = u.toLowerCase();
-  var isImage =
+  const u = String(url || '');
+  const lower = u.toLowerCase();
+  const isImage =
     /[.](jpe?g|png|gif|webp|bmp|svg)([?#].*)?$/i.test(lower) || lower.includes('pas_photo');
-  var isPdf = /[.]pdf([?#].*)?$/i.test(lower);
+  const isPdf = /[.]pdf([?#].*)?$/i.test(lower);
   if (isImage || isPdf) return u;
-  var isOffice = /[.](doc|docx|xls|xlsx|ppt|pptx)([?#].*)?$/i.test(lower);
+  const isOffice = /[.](doc|docx|xls|xlsx|ppt|pptx)([?#].*)?$/i.test(lower);
   if (isOffice) {
     return 'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(u);
   }
@@ -229,13 +229,13 @@ function renderExcelKeFrame(frame, url) {
       return res.arrayBuffer();
     })
     .then(function (buf) {
-      var wb = (window as any).XLSX.read(buf, { type: 'array' });
+      const wb = (window as any).XLSX.read(buf, { type: 'array' });
       if (!wb || !wb.SheetNames || !wb.SheetNames.length) throw new Error('no sheet');
-      var sheet = wb.Sheets[wb.SheetNames[0]];
+      const sheet = wb.Sheets[wb.SheetNames[0]];
       if (!sheet) throw new Error('empty sheet');
-      var html = (window as any).XLSX.utils.sheet_to_html(sheet);
-      var nama = decodeURIComponent(String(url).split('/').pop() || 'spreadsheet');
-      var doc =
+      const html = (window as any).XLSX.utils.sheet_to_html(sheet);
+      const nama = decodeURIComponent(String(url).split('/').pop() || 'spreadsheet');
+      const doc =
         '<!doctype html><html><head><meta charset="utf-8"><title>' +
         nama +
         '</title>' +
@@ -268,8 +268,8 @@ function renderDocxKeFrame(frame, url) {
     })
     .then(function (result) {
       if (!result || !result.value) throw new Error('empty');
-      var nama = decodeURIComponent(String(url).split('/').pop() || 'document.docx');
-      var doc =
+      const nama = decodeURIComponent(String(url).split('/').pop() || 'document.docx');
+      const doc =
         '<!doctype html><html><head><meta charset="utf-8"><title>' +
         nama +
         '</title>' +
@@ -302,7 +302,7 @@ function renderPptxKeDiv(host, url) {
     .then(function (buf) {
       host.classList.remove('hidden');
       host.innerHTML = '';
-      var p = (window as any).pptxPreview.init(host, { width: 960, height: 540 });
+      const p = (window as any).pptxPreview.init(host, { width: 960, height: 540 });
       p.preview(buf);
       return true;
     })
@@ -313,21 +313,21 @@ function renderPptxKeDiv(host, url) {
 }
 
 function pesanPreviewTidakTersedia(url) {
-  var l = SHARE_LANG[currentLang];
-  var ext = (String(url).match(/[.]([a-z0-9]+)([?#].*)?$/i) || [])[1] || '';
+  const l = SHARE_LANG[currentLang];
+  const ext = (String(url).match(/[.]([a-z0-9]+)([?#].*)?$/i) || [])[1] || '';
   // Satu sumber terjemahan: pakai tr() dari i18n.js (sama dengan index/admin);
   // fallback ke SHARE_LANG lokal kalau i18n.js tidak termuat.
-  var judul =
+  const judul =
     typeof window.tr === 'function' &&
     window.tr('ui.preview_unavailable') !== 'ui.preview_unavailable'
       ? window.tr('ui.preview_unavailable')
       : l.prev_unavail;
-  var hint =
+  const hint =
     typeof window.tr === 'function' &&
     window.tr('ui.preview_unavailable_hint') !== 'ui.preview_unavailable_hint'
       ? window.tr('ui.preview_unavailable_hint')
       : l.prev_unavail_hint;
-  var btn =
+  const btn =
     typeof window.tr === 'function' && window.tr('ui.download') !== 'ui.download'
       ? window.tr('ui.download')
       : l.dl;
@@ -367,19 +367,19 @@ export function openPreview(url, title) {
   } else if (!isPreviewableFile(url)) {
     // zip/rar/dll tidak bisa dipratinjau — jangan taruh di iframe
     // (itu yang memicu auto-download); tampilkan pesan + tombol Download.
-    var frame = document.getElementById('preview-iframe');
+    const frame = document.getElementById('preview-iframe');
     frame.removeAttribute('src');
     frame.srcdoc = pesanPreviewTidakTersedia(url);
     frame.classList.remove('hidden');
     document.getElementById('preview-loading').classList.add('hidden');
   } else {
-    var frame2 = document.getElementById('preview-iframe');
-    var pptxHost = document.getElementById('preview-pptx-host');
+    const frame2 = document.getElementById('preview-iframe');
+    const pptxHost = document.getElementById('preview-pptx-host');
     // Bersihkan srcdoc pesan dari bukaan sebelumnya supaya tidak
     // menimpa preview (browser mengutamakan srcdoc atas src).
     frame2.removeAttribute('srcdoc');
-    var render;
-    var isPptx = false;
+    let render;
+    const isPptx = false;
     if (/\.(csv)([?#].*)?$/i.test(url)) {
       render = renderExcelKeFrame; // SheetJS
     }
@@ -405,8 +405,8 @@ export function openPreview(url, title) {
           console.warn('[Preview] Render lokal gagal, fallback viewer eksternal:', url);
           frame2.removeAttribute('srcdoc');
           frame2.src = previewFinalUrl(url);
-          var _gvTimer = setTimeout(function () {
-            var lo = document.getElementById('preview-loading');
+          const _gvTimer = setTimeout(function () {
+            const lo = document.getElementById('preview-loading');
             if (lo && !lo.classList.contains('hidden')) {
               frame2.removeAttribute('src');
               frame2.srcdoc = pesanPreviewTidakTersedia(url);

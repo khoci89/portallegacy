@@ -25,13 +25,13 @@ import { appendHTML as _appendHTML, sendMessage as _sendMessage, type ChatDeps }
 (function () {
   function cleanPhoneJS(wa) {
     if (!wa) return '';
-    var s = String(wa).replace(/\D/g, '');
+    let s = String(wa).replace(/\D/g, '');
     if (s.startsWith('0')) s = '62' + s.substring(1);
     else if (s.startsWith('8')) s = '62' + s;
     return s;
   }
-  var p = new URLSearchParams(window.location.search);
-  var flow = (p.get('flow') || 'master').toLowerCase() === 'apply' ? 'apply' : 'master';
+  const p = new URLSearchParams(window.location.search);
+  const flow = (p.get('flow') || 'master').toLowerCase() === 'apply' ? 'apply' : 'master';
   window.AI_FORM_CONTEXT = {
     flow: flow,
     job: (p.get('job') || '').trim(),
@@ -43,25 +43,25 @@ import { appendHTML as _appendHTML, sendMessage as _sendMessage, type ChatDeps }
 function $(id) {
   return document.getElementById(id);
 }
-var chatHistory = [];
-var latestCandidateData: Record<string, any> = {};
-var currentPhotoBase64 = '';
-var currentJftBase64 = '';
-var currentSswBase64 = '';
-var currentJftFile = null;
-var currentSswFile = null;
-var currentKtpFile = null;
-var currentKkFile = null;
-var currentIjazahSdFile = null;
-var currentIjazahSmpFile = null;
-var currentIjazahSmaFile = null;
-var currentUnivFile = null;
-var urlLogo =
+let chatHistory = [];
+let latestCandidateData: Record<string, any> = {};
+let currentPhotoBase64 = '';
+let currentJftBase64 = '';
+let currentSswBase64 = '';
+let currentJftFile = null;
+let currentSswFile = null;
+let currentKtpFile = null;
+let currentKkFile = null;
+let currentIjazahSdFile = null;
+let currentIjazahSmpFile = null;
+let currentIjazahSmaFile = null;
+let currentUnivFile = null;
+const urlLogo =
   'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo_asj.png';
-var urlJeklin =
+const urlJeklin =
   'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/jeklin.png';
-var formContext: Record<string, any> = window.AI_FORM_CONTEXT || {};
-var fieldPaths = {
+const formContext: Record<string, any> = window.AI_FORM_CONTEXT || {};
+const fieldPaths = {
   // 1. Identitas & Kontak
   f_nama: 'identitas.nama_lengkap',
   f_katakana: 'identitas.katakana',
@@ -150,7 +150,7 @@ var fieldPaths = {
   f_kenalan_alamat_jp: 'kenalan_jepang.alamat_jp',
 };
 // Opsi dropdown isi-manual (dwi bahasa; nilai tersimpan tetap bersih).
-var TINGKAT_OPTIONS = ['SD', 'SMP', 'SMA/SMK', 'D3/S1', 'LPK BAHASA'];
+const TINGKAT_OPTIONS = ['SD', 'SMP', 'SMA/SMK', 'D3/S1', 'LPK BAHASA'];
 // ----------------------------------------------------------------------------
 // PAIRED DROPDOWN (ID ↔ kanji) — 2026-09-10
 // ----------------------------------------------------------------------------
@@ -171,7 +171,7 @@ import {
 // Dropdown statis (kartu identitas) — pasangan [nilai tersimpan, label kanji].
 // Nilai mengikuti bentuk yang sudah tersimpan di master (lihat buildMasterNested
 // & Rirekisho: LAKI-LAKI/PEREMPUAN, ISLAM, BELUM MENIKAH, dsb.).
-var IDENTITAS_PAIRS = {
+const IDENTITAS_PAIRS = {
   gender: [
     ['LAKI-LAKI', '男性'],
     ['PEREMPUAN', '女性'],
@@ -213,7 +213,7 @@ var IDENTITAS_PAIRS = {
   ],
 };
 // Peta pemakaian: fieldPath → pasangan (kartu identitas, bukan kartu riwayat).
-var FIELD_PAIRS: Record<string, Array<any>> = {
+const FIELD_PAIRS: Record<string, Array<any>> = {
   'identitas.gender': IDENTITAS_PAIRS.gender,
   'identitas.agama': IDENTITAS_PAIRS.agama,
   'identitas.golongan_darah': IDENTITAS_PAIRS.golongan_darah,
@@ -237,21 +237,21 @@ var FIELD_PAIRS: Record<string, Array<any>> = {
 
 // Ukuran dropdown (ID + JP): satu field kanonik menyimpan nilai ID, label
 // menampilkan ID + JP. Menurut user: "cukup 1 field yang memuat gabungan".
-var SEPATU_PAIRS: Array<[string, string]> = [
+const SEPATU_PAIRS: Array<[string, string]> = [
   ['36', '36 (JP 23.0cm)'], ['37', '37 (JP 23.5cm)'], ['38', '38 (JP 24.0cm)'],
   ['39', '39 (JP 24.5cm)'], ['40', '40 (JP 25.0cm)'], ['41', '41 (JP 25.5cm)'],
   ['42', '42 (JP 26.0cm)'], ['43', '43 (JP 26.5cm)'], ['44', '44 (JP 27.0cm)'],
   ['45', '45 (JP 27.5cm)'], ['46', '46 (JP 28.0cm)'],
 ];
-var BAJU_PAIRS: Array<[string, string]> = [
+const BAJU_PAIRS: Array<[string, string]> = [
   ['S', 'S (JP S)'], ['M', 'M (JP M)'], ['L', 'L (JP L)'],
   ['XL', 'XL (JP LL)'], ['XXL', 'XXL (JP 3L)'],
 ];
-var TOPI_PAIRS: Array<[string, string]> = [
+const TOPI_PAIRS: Array<[string, string]> = [
   ['54', '54 (JP 54cm)'], ['56', '56 (JP 56cm)'], ['58', '58 (JP 58cm)'],
   ['60', '60 (JP 60cm)'], ['62', '62 (JP 62cm)'],
 ];
-var SIZE_FIELDS: Record<string, Array<[string, string]>> = {
+const SIZE_FIELDS: Record<string, Array<[string, string]>> = {
   'fisik.sepatu': SEPATU_PAIRS,
   'fisik.baju': BAJU_PAIRS,
   'fisik.topi': TOPI_PAIRS,
@@ -263,7 +263,7 @@ var SIZE_FIELDS: Record<string, Array<[string, string]>> = {
 // path partner (bila ada di PAIRED_PARTNER) dengan pasangannya — HANYA jika
 // partner masih kosong atau nilainya tidak cocok, dan hanya jika pasangan
 // ditemukan di registry. Nilai bebas (di luar registry) tidak pernah ditimpa.
-var PAIRED_PARTNER: Record<string, string> = {
+const PAIRED_PARTNER: Record<string, string> = {
   'identitas.gender': 'identitas.gender_jp',
   'identitas.agama': 'identitas.agama_jp',
   'identitas.status_nikah': 'identitas.status_nikah_jp',
@@ -271,7 +271,7 @@ var PAIRED_PARTNER: Record<string, string> = {
   'kenalan_jepang.hubungan_id': 'kenalan_jepang.hubungan_jp',
   'kenalan_jepang.pekerjaan_id': 'kenalan_jepang.pekerjaan_jp',
 };
-var PAIRED_PARTNER_JP: Record<string, string> = {
+const PAIRED_PARTNER_JP: Record<string, string> = {
   'identitas.gender_jp': 'identitas.gender',
   'identitas.agama_jp': 'identitas.agama',
   'identitas.status_nikah_jp': 'identitas.status_nikah',
@@ -279,7 +279,7 @@ var PAIRED_PARTNER_JP: Record<string, string> = {
   'kenalan_jepang.hubungan_jp': 'kenalan_jepang.hubungan_id',
   'kenalan_jepang.pekerjaan_jp': 'kenalan_jepang.pekerjaan_id',
 };
-var PAIRED_PARS: Record<string, Array<any>> = {
+const PAIRED_PARS: Record<string, Array<any>> = {
   'identitas.gender': IDENTITAS_PAIRS.gender,
   'identitas.gender_jp': IDENTITAS_PAIRS.gender,
   'identitas.agama': IDENTITAS_PAIRS.agama,
@@ -295,13 +295,13 @@ var PAIRED_PARS: Record<string, Array<any>> = {
 };
 function setPairedValue(path, value) {
   setByPath(latestCandidateData, path, value);
-  var partnerPath = PAIRED_PARTNER[path] || PAIRED_PARTNER_JP[path];
-  var pairs = PAIRED_PARS[path];
+  const partnerPath = PAIRED_PARTNER[path] || PAIRED_PARTNER_JP[path];
+  const pairs = PAIRED_PARS[path];
   if (!partnerPath || !pairs) return;
-  var isId = !path.endsWith('_jp') && !path.endsWith('.pekerjaan_jp');
-  var partnerVal = isId ? pairJpOf(pairs, value) : pairIdOf(pairs, value);
+  const isId = !path.endsWith('_jp') && !path.endsWith('.pekerjaan_jp');
+  const partnerVal = isId ? pairJpOf(pairs, value) : pairIdOf(pairs, value);
   if (!partnerVal) return; // nilai bebas di luar registry — partner dibiarkan
-  var cur = String(getByPath(latestCandidateData, partnerPath) || '').trim();
+  const cur = String(getByPath(latestCandidateData, partnerPath) || '').trim();
   if (cur && cur !== partnerVal) {
     // Partner sudah terisi beda: timpa HANYA kalau partner adalah hasil
     // pair registry lain (tak mungkin beda kalau konsisten) — pilih aman:
@@ -310,7 +310,7 @@ function setPairedValue(path, value) {
   }
   setByPath(latestCandidateData, partnerPath, partnerVal);
 }
-var arrayFields = {
+const arrayFields = {
   pendidikan: [
     ['tingkat', 'form.ai_f_tingkat', 'select', TINGKAT_OPTIONS],
     ['sekolah_id', 'form.ai_f_sekolah_id'],
@@ -343,7 +343,7 @@ var arrayFields = {
 
 // Pair-sync kartu riwayat: pasangan field dalam SATU item array. updateArrayField
 // mengisi partner otomatis (ID→kanji atau kanji→ID) dari registry.
-var ARRAY_PAIRS: Record<string, any> = {
+const ARRAY_PAIRS: Record<string, any> = {
   'keluarga.hubungan_id': { partner: 'hubungan_jp', pairs: KELUARGA_PAIRS, dir: 'id' },
   'keluarga.hubungan_jp': { partner: 'hubungan_id', pairs: KELUARGA_PAIRS, dir: 'jp' },
   'keluarga.pekerjaan_id': { partner: 'pekerjaan_jp', pairs: PEKERJAAN_PAIRS, dir: 'id' },
@@ -355,10 +355,10 @@ var ARRAY_PAIRS: Record<string, any> = {
 // Tahun (masuk/lulus/mulai/keluar): dropdown supaya format konsisten — dulu
 // input bebas, sering "2019" vs "2019-04" campur → sort Rirekisho kacau.
 function yearOptionsHtml(current: any) {
-  var now = new Date().getFullYear();
-  var html = '<option value="">' + window.tr('form.ai_f_pilih') + '</option>';
-  var found = String(current || '').trim() !== '';
-  for (var y = now; y >= now - 60; y--) {
+  const now = new Date().getFullYear();
+  let html = '<option value="">' + window.tr('form.ai_f_pilih') + '</option>';
+  let found = String(current || '').trim() !== '';
+  for (let y = now; y >= now - 60; y--) {
     if (String(current) === String(y)) found = true;
     html += '<option value="' + y + '"' + (String(current) === String(y) ? ' selected' : '') + '>' + y + '</option>';
   }
@@ -370,9 +370,9 @@ function yearOptionsHtml(current: any) {
 }
 
 function monthOptionsHtml(current: any) {
-  var html = '<option value="">' + window.tr('form.ai_f_pilih') + '</option>';
-  for (var m = 1; m <= 12; m++) {
-    var sm = m < 10 ? '0' + m : String(m);
+  let html = '<option value="">' + window.tr('form.ai_f_pilih') + '</option>';
+  for (let m = 1; m <= 12; m++) {
+    const sm = m < 10 ? '0' + m : String(m);
     html += '<option value="' + sm + '"' + (String(current) === sm ? ' selected' : '') + '>' + sm + '</option>';
   }
   return html;
@@ -385,8 +385,8 @@ function getByPath(source, path) {
 }
 
 function setByPath(target, path, value) {
-  var keys = path.split('.'),
-    cursor = target;
+  const keys = path.split('.');
+  let cursor = target;
   keys.slice(0, -1).forEach(function (key) {
     if (!cursor[key] || typeof cursor[key] !== 'object') cursor[key] = {};
     cursor = cursor[key];
@@ -395,16 +395,16 @@ function setByPath(target, path, value) {
 }
 function mergeCandidateData(current, incoming) {
   if (Array.isArray(incoming)) {
-    var currentArray = Array.isArray(current) ? current : [];
+    const currentArray = Array.isArray(current) ? current : [];
     if (!incoming.length) return currentArray.slice();
-    var mergedArray = incoming.map(function (item, index) {
+    const mergedArray = incoming.map(function (item, index) {
       return mergeCandidateData(currentArray[index], item);
     });
     return mergedArray.concat(currentArray.slice(incoming.length));
   }
   if (incoming && typeof incoming === 'object') {
-    var base = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
-    var result: Record<string, any> = {};
+    const base = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
+    const result: Record<string, any> = {};
     Object.keys(base).forEach(function (key) {
       result[key] = base[key];
     });
@@ -444,7 +444,7 @@ function enableManualPreview() {
       el.setAttribute('title', window.tr('form.ai_f_tooltip'));
     });
   Object.keys(fieldPaths).forEach(function (id) {
-    var el = $(id);
+    const el = $(id);
     if (!el || el.dataset.manualBound) return;
     el.dataset.manualBound = 'true';
     el.addEventListener('input', function () {
@@ -475,16 +475,16 @@ function applyStaticPair(path, value) {
 // disisipkan menimpanya (data-pair-sel). Hanya field yang punya FIELD_PAIRS.
 function enableStaticPairSelects() {
   Object.keys(FIELD_PAIRS).forEach(function (path) {
-    var id = Object.keys(fieldPaths).find(function (k) {
+    const id = Object.keys(fieldPaths).find(function (k) {
       return fieldPaths[k] === path;
     });
     if (!id) return;
-    var orig = $(id);
+    const orig = $(id);
     if (!orig || orig.dataset.pairBound) return;
     orig.dataset.pairBound = '1';
-    var pairs = FIELD_PAIRS[path];
-    var isJp = /_jp$/.test(path);
-    var sel = document.createElement('select');
+    const pairs = FIELD_PAIRS[path];
+    const isJp = /_jp$/.test(path);
+    const sel = document.createElement('select');
     sel.className = orig.className;
     sel.dataset.pairSel = path;
     sel.onchange = function () {
@@ -493,13 +493,13 @@ function enableStaticPairSelects() {
     // Fungsi refresh opsi — dipanggil updateFormUI supaya select mengikuti
     // nilai terbaru (dari chat AI/database) dan bahasa label aktif.
     (sel as any).refreshPairs = function () {
-      var cur = String(getByPath(latestCandidateData, path) || '').trim();
-      var html = '<option value="">' + window.tr('form.ai_f_pilih') + '</option>';
-      var found = cur === '';
-      for (var i = 0; i < pairs.length; i++) {
-        var val = isJp ? pairs[i][1] : pairs[i][0];
-        var lbl = isJp ? pairs[i][1] + '（' + pairs[i][0] + '）' : pairs[i][0] + '（' + pairs[i][1] + '）';
-        var isSel = cur === String(val);
+      const cur = String(getByPath(latestCandidateData, path) || '').trim();
+      let html = '<option value="">' + window.tr('form.ai_f_pilih') + '</option>';
+      let found = cur === '';
+      for (let i = 0; i < pairs.length; i++) {
+        const val = isJp ? pairs[i][1] : pairs[i][0];
+        const lbl = isJp ? pairs[i][1] + '（' + pairs[i][0] + '）' : pairs[i][0] + '（' + pairs[i][1] + '）';
+        const isSel = cur === String(val);
         if (isSel) found = true;
         html += '<option value="' + escapeHtml(String(val)) + '"' + (isSel ? ' selected' : '') + '>' + escapeHtml(lbl) + '</option>';
       }
@@ -514,7 +514,7 @@ function enableStaticPairSelects() {
     STATIC_PAIR_SELECTS[id] = { sel: sel, path: path };
   });
 }
-var STATIC_PAIR_SELECTS: Record<string, any> = {};
+const STATIC_PAIR_SELECTS: Record<string, any> = {};
 
 // ---------------------------------------------------------------------------
 // TANGGAL LAHIR → UMUR AUTO + NORMALISASI DATE INPUT
@@ -522,16 +522,16 @@ var STATIC_PAIR_SELECTS: Record<string, any> = {};
 // Normalisasi berbagai format tanggal lahir ke YYYY-MM-DD untuk <input type="date">.
 function normalizeDateToIso(raw: string): string {
   if (!raw) return '';
-  var s = String(raw).trim();
+  const s = String(raw).trim();
   // Sudah YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   // YYYY/MM/DD
-  var m2 = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  const m2 = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
   if (m2) return m2[1] + '-' + m2[2].padStart(2, '0') + '-' + m2[3].padStart(2, '0');
   // DD/MM/YYYY atau MM/DD/YYYY
-  var m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if (m) {
-    var a = Number(m[1]), b = Number(m[2]);
+    const a = Number(m[1]), b = Number(m[2]);
     // MM/DD/YYYY: bulan > 12 tidak mungkin jadi bulan → DD/MM/YYYY
     if (a > 12) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
     // DD/MM/YYYY: hari > 12 tidak mungkin jadi hari → MM/DD/YYYY
@@ -545,22 +545,22 @@ function normalizeDateToIso(raw: string): string {
 // Hitung umur dari tanggal lahir YYYY-MM-DD.
 function computeAge(isoDate: string): number {
   if (!isoDate) return 0;
-  var parts = isoDate.split('-');
+  const parts = isoDate.split('-');
   if (parts.length !== 3) return 0;
-  var y = Number(parts[0]), m = Number(parts[1]), d = Number(parts[2]);
+  const y = Number(parts[0]), m = Number(parts[1]), d = Number(parts[2]);
   if (!y || !m || !d) return 0;
-  var today = new Date();
-  var age = today.getFullYear() - y;
+  const today = new Date();
+  let age = today.getFullYear() - y;
   if (today.getMonth() + 1 < m || (today.getMonth() + 1 === m && today.getDate() < d)) age--;
   return age >= 0 ? age : 0;
 }
 
 // Sinkronisasi umur dari field tgl lahir → f_umur.
 function syncUmurFromTglLahir() {
-  var tgllahir = getByPath(latestCandidateData, 'identitas.tgl_lahir');
-  var iso = normalizeDateToIso(String(tgllahir || ''));
+  const tgllahir = getByPath(latestCandidateData, 'identitas.tgl_lahir');
+  const iso = normalizeDateToIso(String(tgllahir || ''));
   if (iso) {
-    var age = computeAge(iso);
+    const age = computeAge(iso);
     if (age > 0) {
       setByPath(latestCandidateData, 'identitas.umur', String(age));
       setValue('f_umur', String(age));
@@ -575,15 +575,15 @@ function syncUmurFromTglLahir() {
 // Menyimpan nilai kanonik (ID saja) — JP hanya di label.
 function enableSizeSelects() {
   Object.keys(SIZE_FIELDS).forEach(function (path) {
-    var id = Object.keys(fieldPaths).find(function (k) { return fieldPaths[k] === path; });
+    const id = Object.keys(fieldPaths).find(function (k) { return fieldPaths[k] === path; });
     if (!id) return;
-    var orig = $(id);
+    const orig = $(id);
     if (!orig || orig.dataset.sizeBound) return;
     // Jika sudah jadi pair select (FIELD_PAIRS), skip — tidak bentrok.
     if (orig.dataset.pairBound) return;
     orig.dataset.sizeBound = '1';
-    var pairs = SIZE_FIELDS[path];
-    var sel = document.createElement('select');
+    const pairs = SIZE_FIELDS[path];
+    const sel = document.createElement('select');
     sel.className = orig.className;
     sel.dataset.sizeSel = path;
     sel.onchange = function () {
@@ -592,12 +592,12 @@ function enableSizeSelects() {
       saveToLocal();
     };
     (sel as any).refreshSize = function () {
-      var cur = String(getByPath(latestCandidateData, path) || '').trim();
-      var html = '<option value="">' + window.tr('form.ai_f_pilih') + '</option>';
-      var found = cur === '';
-      for (var i = 0; i < pairs.length; i++) {
-        var val = pairs[i][0];
-        var lbl = pairs[i][1]; // sudah "ID (JP ...)"
+      const cur = String(getByPath(latestCandidateData, path) || '').trim();
+      let html = '<option value="">' + window.tr('form.ai_f_pilih') + '</option>';
+      let found = cur === '';
+      for (let i = 0; i < pairs.length; i++) {
+        const val = pairs[i][0];
+        const lbl = pairs[i][1]; // sudah "ID (JP ...)"
         if (cur === val) { found = true; }
         html += '<option value="' + escapeHtml(val) + '"' + (cur === val ? ' selected' : '') + '>' + escapeHtml(lbl) + '</option>';
       }
@@ -616,34 +616,34 @@ function enableSizeSelects() {
 // SIM & PASPOR — STATUS SELECT + KONDISIONAL NUMBER
 // ---------------------------------------------------------------------------
 function syncSimPasporVisibility() {
-  var pasporStatus = $('f_paspor_status') as HTMLSelectElement | null;
-  var pasporInput = $('f_paspor') as HTMLInputElement | null;
-  var simStatus = $('f_sim_status') as HTMLSelectElement | null;
-  var simInput = $('f_sim') as HTMLInputElement | null;
+  const pasporStatus = $('f_paspor_status') as HTMLSelectElement | null;
+  const pasporInput = $('f_paspor') as HTMLInputElement | null;
+  const simStatus = $('f_sim_status') as HTMLSelectElement | null;
+  const simInput = $('f_sim') as HTMLInputElement | null;
   if (pasporStatus && pasporInput) {
-    var statusVal = pasporStatus.value || getByPath(latestCandidateData, 'identitas.paspor_status') || '';
+    const statusVal = pasporStatus.value || getByPath(latestCandidateData, 'identitas.paspor_status') || '';
     pasporInput.style.display = statusVal === 'TIDAK ADA' ? 'none' : '';
     if (statusVal === 'TIDAK ADA') { pasporInput.value = ''; setByPath(latestCandidateData, 'identitas.paspor', ''); }
   }
   if (simStatus && simInput) {
-    var statusVal = simStatus.value || getByPath(latestCandidateData, 'identitas.sim_status') || '';
+    const statusVal = simStatus.value || getByPath(latestCandidateData, 'identitas.sim_status') || '';
     simInput.style.display = statusVal === 'TIDAK ADA' ? 'none' : '';
     if (statusVal === 'TIDAK ADA') { simInput.value = ''; setByPath(latestCandidateData, 'identitas.sim', ''); }
   }
 }
 function enableSimPasporConditional() {
-  var pasporStatus = $('f_paspor_status') as HTMLSelectElement | null;
-  var pasporInput = $('f_paspor') as HTMLInputElement | null;
-  var simStatus = $('f_sim_status') as HTMLSelectElement | null;
-  var simInput = $('f_sim') as HTMLInputElement | null;
+  const pasporStatus = $('f_paspor_status') as HTMLSelectElement | null;
+  const pasporInput = $('f_paspor') as HTMLInputElement | null;
+  const simStatus = $('f_sim_status') as HTMLSelectElement | null;
+  const simInput = $('f_sim') as HTMLInputElement | null;
 
   // Restore status dari data tersimpan.
   if (pasporStatus) {
-    var savedPaspor = getByPath(latestCandidateData, 'identitas.paspor_status');
+    const savedPaspor = getByPath(latestCandidateData, 'identitas.paspor_status');
     if (savedPaspor) pasporStatus.value = String(savedPaspor);
     // Derive status dari nilai paspor jika belum ada status tersimpan.
     if (!savedPaspor && pasporInput) {
-      var existing = getByPath(latestCandidateData, 'identitas.paspor');
+      const existing = getByPath(latestCandidateData, 'identitas.paspor');
       pasporStatus.value = existing ? 'ADA' : 'TIDAK ADA';
     }
     pasporStatus.removeAttribute('readonly');
@@ -655,10 +655,10 @@ function enableSimPasporConditional() {
     };
   }
   if (simStatus) {
-    var savedSim = getByPath(latestCandidateData, 'identitas.sim_status');
+    const savedSim = getByPath(latestCandidateData, 'identitas.sim_status');
     if (savedSim) simStatus.value = String(savedSim);
     if (!savedSim && simInput) {
-      var existingSim = getByPath(latestCandidateData, 'identitas.sim');
+      const existingSim = getByPath(latestCandidateData, 'identitas.sim');
       simStatus.value = existingSim ? 'ADA' : 'TIDAK ADA';
     }
     simStatus.removeAttribute('readonly');
@@ -676,7 +676,7 @@ function enableSimPasporConditional() {
 // tidak pernah ditimpa di tengah pemakaian.
 function bindDeferredFlush() {
   ['c_pendidikan', 'c_pekerjaan', 'c_keluarga'].forEach(function (cid) {
-    var c = $(cid);
+    const c = $(cid);
     if (!c || c.dataset.flushBound) return;
     c.dataset.flushBound = '1';
     c.addEventListener('blur', flushDeferredArrayRender, true); // capture: blur child
@@ -690,9 +690,9 @@ export function updateArrayField(type, index, field, value) {
   latestCandidateData[type][index][field] = value;
   // Pair-sync (2026-09-10): pilih sisi ID → kanji JP terisi pas, dan sebaliknya.
   // Dipanggil SEBELUM saveToLocal supaya pasangan ikut tersimpan.
-  var pr = ARRAY_PAIRS[type + '.' + field];
+  const pr = ARRAY_PAIRS[type + '.' + field];
   if (pr && value) {
-    var partnerVal = pr.dir === 'id' ? pairJpOf(pr.pairs, value) : pairIdOf(pr.pairs, value);
+    const partnerVal = pr.dir === 'id' ? pairJpOf(pr.pairs, value) : pairIdOf(pr.pairs, value);
     if (partnerVal) latestCandidateData[type][index][pr.partner] = partnerVal;
   }
   saveToLocal();
@@ -705,7 +705,7 @@ export function addArrayItem(type) {
   latestCandidateData =
     latestCandidateData && typeof latestCandidateData === 'object' ? latestCandidateData : {};
   if (!Array.isArray(latestCandidateData[type])) latestCandidateData[type] = [];
-  var item: Record<string, any> = {};
+  const item: Record<string, any> = {};
   arrayFields[type].forEach(function (definition) {
     item[definition[0]] = '';
   });
@@ -722,21 +722,21 @@ export function removeArrayItem(type, index) {
 }
 
 function getStorageKey() {
-  var wa = String(formContext.wa || 'baru').replace(/\D/g, '');
-  var job = String(formContext.job || formContext.flow || 'master').replace(/[^a-z0-9_-]/gi, '_');
+  const wa = String(formContext.wa || 'baru').replace(/\D/g, '');
+  const job = String(formContext.job || formContext.flow || 'master').replace(/[^a-z0-9_-]/gi, '_');
   return 'asj_qween_cv_data_' + wa + '_' + job;
 }
 
 function applyPortalContext() {
   latestCandidateData =
     latestCandidateData && typeof latestCandidateData === 'object' ? latestCandidateData : {};
-  var identitas = latestCandidateData.identitas || {};
+  const identitas = latestCandidateData.identitas || {};
   if (!identitas.nama_lengkap && formContext.nama)
     setByPath(latestCandidateData, 'identitas.nama_lengkap', formContext.nama);
   if (!identitas.hp && formContext.wa)
     setByPath(latestCandidateData, 'identitas.hp', formContext.wa);
 
-  var label =
+  const label =
     formContext.flow === 'apply'
       ? 'Lamaran ' + (formContext.job || 'umum') + ' tersambung ke portal.'
       : 'CV Master tersambung ke profil portal.';
@@ -747,7 +747,7 @@ function applyPortalContext() {
 // Old regex /\[(?:KELAS\s*[A-Z0-9]+|[A-Z0-9]+)\]/i matched ANY bracketed
 // tag ([MCU], [VISA], [NOTE]) — too broad. Tightened to [VIP] + [KELAS ...] only.
 function isVipCatatan(catatan) {
-  var c = catatan || '';
+  const c = catatan || '';
   return c.includes('[VIP]') || /\[KELAS\s*[A-Z0-9]+\]/i.test(c);
 }
 
@@ -790,8 +790,8 @@ function verifikasiAksesAiCv(targetWa) {
       // Respons backend rebuild menaruh data kandidat di res.candidates[0]
       // (dulu myData di backend GAS lama). Ambil catatanInt dari sana agar
       // kandidat VIP tidak salah redirect ke Form Master.
-      var cand = res && Array.isArray(res.candidates) ? res.candidates[0] : null;
-      var catatan = cand ? String(cand.catatanInt || cand.catatan || '') : '';
+      const cand = res && Array.isArray(res.candidates) ? res.candidates[0] : null;
+      let catatan = cand ? String(cand.catatanInt || cand.catatan || '') : '';
       if (!catatan && res && res.myData) catatan = String(res.myData.catatanInt || '');
       return isVipCatatan(catatan);
     })
@@ -820,7 +820,7 @@ function jalankanAutoFill(targetWa) {
       if (masterData) {
         if (masterData.AIDATAJSON && typeof masterData.AIDATAJSON === 'string') {
           try {
-            var aiParsed = JSON.parse(masterData.AIDATAJSON);
+            const aiParsed = JSON.parse(masterData.AIDATAJSON);
             masterData = mergeCandidateData(masterData, aiParsed);
           } catch (e) {
             console.warn('Failed to parse AIDATAJSON', e);
@@ -833,7 +833,7 @@ function jalankanAutoFill(targetWa) {
         // JIKA BUKA CHAT PERTAMA KALI: TAMPILKAN SAPAAN PINTAR DENGAN NAMA & DATA KOSONG
         if (chatHistory.length === 0) {
           $('chatBox').innerHTML = ''; // Bersihkan sapaan lama
-          var smartWelcome = generateSmartWelcomeMessage(latestCandidateData);
+          const smartWelcome = generateSmartWelcomeMessage(latestCandidateData);
           appendHTML('ai', smartWelcome);
           chatHistory.push({
             role: 'assistant',
@@ -859,7 +859,7 @@ export async function initApp() {
   // Terjemahkan label statis sesuai bahasa terpilih (asj_lang).
   if (typeof window.renderLanguageLight === 'function') {
     window.renderLanguageLight();
-    var lb = document.getElementById('lang-btn-ai');
+    const lb = document.getElementById('lang-btn-ai');
     if (lb) lb.textContent = window.CURRENT_LANG === 'jp' ? 'ID' : 'JP';
   }
   // Select pasangan menggantikan input identitas/kenalan tertentu SEBELUM
@@ -885,8 +885,8 @@ export async function initApp() {
   }
 
   // Restore draft: try IndexedDB first, then localStorage fallback
-  var storageKey = getStorageKey();
-  var saved: string | null = null;
+  const storageKey = getStorageKey();
+  let saved: string | null = null;
   try {
     saved = await idbGet(storageKey);
     if (saved && typeof saved === 'string') {
@@ -903,7 +903,7 @@ export async function initApp() {
   }
   if (saved) {
     try {
-      var parsed = JSON.parse(saved);
+      const parsed = JSON.parse(saved);
       chatHistory = parsed.chatHistory || [];
       latestCandidateData = parsed.latestCandidateData || {};
       currentPhotoBase64 = parsed.currentPhotoBase64 || '';
@@ -927,7 +927,7 @@ export async function initApp() {
   applyPortalContext();
 
   // AUTO-FILL SPREADSHEET & SAPAAN PINTAR JEKLIN
-  var targetWa =
+  const targetWa =
     formContext.wa || (latestCandidateData.identitas && latestCandidateData.identitas.hp);
   if (targetWa && formContext.flow === 'master') {
     verifikasiAksesAiCv(targetWa).then(function (izin) {
@@ -977,14 +977,14 @@ export async function initApp() {
 }
 
 function generateSmartWelcomeMessage(data) {
-  var id = (data && data.identitas) || {};
-  var fs = (data && data.fisik) || {};
-  var iv = (data && data.wawancara) || {};
-  var nama = id.panggilan || id.nama_lengkap || formContext.nama || '';
+  const id = (data && data.identitas) || {};
+  const fs = (data && data.fisik) || {};
+  const iv = (data && data.wawancara) || {};
+  const nama = id.panggilan || id.nama_lengkap || formContext.nama || '';
 
   if (nama) {
     // Deteksi daftar bidang yang masih kosong
-    var missing = [];
+    const missing = [];
     if (!id.ktp) missing.push(window.tr('form.chat_missing_ktp'));
     if (!id.paspor) missing.push(window.tr('form.chat_missing_paspor'));
     if (!iv.promosi_jp && iv.promosi_id) missing.push(window.tr('form.chat_missing_jiko'));
@@ -1005,7 +1005,7 @@ function generateSmartWelcomeMessage(data) {
     if (!data.sertifikasi || (!data.sertifikasi.bahasa_jepang && !data.sertifikasi.jft))
       missing.push(window.tr('form.chat_missing_sertifikasi'));
 
-    var welcomeText = window.tr('form.chat_welcome_named_intro').replace('{nama}', nama);
+    let welcomeText = window.tr('form.chat_welcome_named_intro').replace('{nama}', nama);
 
     if (missing.length > 0) {
       welcomeText += window
@@ -1021,7 +1021,7 @@ function generateSmartWelcomeMessage(data) {
 }
 
 function sendWelcomeMessage() {
-  var welcome = window.tr('form.chat_welcome_nameless');
+  const welcome = window.tr('form.chat_welcome_nameless');
   appendHTML('ai', welcome);
   chatHistory.push({ role: 'assistant', content: JSON.stringify({ reply: welcome, data: {} }) });
   saveToLocal();
@@ -1033,7 +1033,7 @@ function saveToLocal() {
     // localStorage 5MB penuh -> data nyangkut). Foto dikompres 600px jadi
     // kecil dan aman disimpan untuk preview; file JFT/SSW dipilih ulang
     // kalau halaman di-reload (status lama tetap tampil dari DB).
-    var payload = JSON.stringify({
+    const payload = JSON.stringify({
       chatHistory: chatHistory,
       latestCandidateData: latestCandidateData,
       currentPhotoBase64: currentPhotoBase64,
@@ -1051,12 +1051,12 @@ function saveToLocal() {
 // Dipakai handleResize supaya rotasi layar kembali ke tab yang dipilih,
 // TANPA memaksa pindah tab saat iPhone memicu "resize" tiap scroll
 // (URL bar Safari naik/turun) — penyebab kolom chat "puter-puter".
-var lastMobileTab = 'chat';
-var wasDesktop = window.innerWidth >= 768;
+let lastMobileTab = 'chat';
+let wasDesktop = window.innerWidth >= 768;
 export function switchTab(target) {
   lastMobileTab = target;
   if (window.innerWidth >= 768) return;
-  var cPanel = $('chatPanel'),
+  const cPanel = $('chatPanel'),
     fPanel = $('formPanel'),
     tChat = $('btnTabChat'),
     tForm = $('btnTabForm');
@@ -1081,7 +1081,7 @@ function handleResize() {
   // iPhone Safari memicu "resize" tiap scroll (URL bar naik/turun) —
   // hanya bereaksi saat MENYEBRANG breakpoint md (mis. rotasi layar),
   // dan kembali ke tab terakhir yang aktif, bukan paksa "chat".
-  var isDesktop = window.innerWidth >= 768;
+  const isDesktop = window.innerWidth >= 768;
   if (isDesktop === wasDesktop) return;
   wasDesktop = isDesktop;
   if (!isDesktop) switchTab(lastMobileTab);
@@ -1102,12 +1102,12 @@ function sendMessage() {
 }
 
 function setValue(id, val) {
-  var el = $(id);
+  const el = $(id);
   if (!el) return;
-  var nextValue = val === undefined || val === null ? '' : String(val);
+  let nextValue = val === undefined || val === null ? '' : String(val);
   // Normalisasi tanggal lahir ke YYYY-MM-DD untuk <input type="date">.
   if (id === 'f_tgllahir' && nextValue) {
-    var iso = normalizeDateToIso(nextValue);
+    const iso = normalizeDateToIso(nextValue);
     if (iso) nextValue = iso;
   }
   if (el.value === nextValue) return;
@@ -1119,11 +1119,11 @@ function setValue(id, val) {
 }
 
 function renderOptionsHtml(currentVal, opts) {
-  var html = '<option value="">' + window.tr('form.ai_f_pilih') + '</option>';
-  var found = false;
+  let html = '<option value="">' + window.tr('form.ai_f_pilih') + '</option>';
+  let found = false;
   opts.forEach(function (o) {
-    var v = Array.isArray(o) ? o[0] : o;
-    var l = Array.isArray(o) ? o[1] : o;
+    const v = Array.isArray(o) ? o[0] : o;
+    const l = Array.isArray(o) ? o[1] : o;
     if (String(currentVal) === String(v)) {
       found = true;
       html += '<option value="' + escapeHtml(v) + '" selected>' + escapeHtml(l) + '</option>';
@@ -1151,22 +1151,22 @@ function renderOptionsHtml(currentVal, opts) {
 // sampai interaksi selesai (deferred render); (3) perubahan satu item hanya
 // me-render ulang KARTU item itu (updateArrayCard), bukan seluruh daftar.
 // ----------------------------------------------------------------------------
-var ARRAY_SNAPSHOT: Record<string, string> = {};
-var DEFERRED_RENDER: Record<string, boolean> = {};
+const ARRAY_SNAPSHOT: Record<string, string> = {};
+const DEFERRED_RENDER: Record<string, boolean> = {};
 
 function arraySignature(type) {
-  var items = latestCandidateData[type];
+  const items = latestCandidateData[type];
   return items ? JSON.stringify(items) : '';
 }
 
 function openSelectIn(container: HTMLElement | null) {
   if (!container) return false;
-  var sels = container.querySelectorAll('select.input-micro');
-  for (var i = 0; i < sels.length; i++) {
+  const sels = container.querySelectorAll('select.input-micro');
+  for (let i = 0; i < sels.length; i++) {
     // Kriteria dropdown terbuka: sedang fokus ATAU pengguna sedang menekan
     // (pointer/mouse belum dilepas). :open tidak bisa dibaca lintas browser,
     // fokus + pointerdown adalah proksi paling andal.
-    var el = sels[i] as HTMLSelectElement;
+    const el = sels[i] as HTMLSelectElement;
     if (document.activeElement === el || (el as any).dataset.pointerHeld === '1') return true;
   }
   return false;
@@ -1175,16 +1175,16 @@ function openSelectIn(container: HTMLElement | null) {
 // Kartu sedang berinteraksi: ada select terbuka ATAU input/textarea fokus.
 function cardBusy(card: HTMLElement) {
   if (openSelectIn(card)) return true;
-  var ae = document.activeElement;
+  const ae = document.activeElement;
   if (ae && card.contains(ae)) {
-    var tag = (ae as HTMLElement).tagName;
+    const tag = (ae as HTMLElement).tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') return true;
   }
   return false;
 }
 
 function flushDeferredArrayRender() {
-  for (var type in DEFERRED_RENDER) {
+  for (let type in DEFERRED_RENDER) {
     if (!DEFERRED_RENDER[type]) continue;
     DEFERRED_RENDER[type] = false;
     renderEditableArray(type);
@@ -1193,10 +1193,10 @@ function flushDeferredArrayRender() {
 
 export function renderEditableArray(type, containerId?) {
   void containerId; // kompatibel pemanggil lama (container di-resolve sendiri)
-  var container = $('c_' + type);
+  const container = $('c_' + type);
   if (!container) return;
   // (1) Data tidak berubah → JANGAN sentuh DOM (dropdown tidak terganggu).
-  var sig = arraySignature(type);
+  const sig = arraySignature(type);
   if (ARRAY_SNAPSHOT[type] === sig) return;
   // (2) Dropdown terbuka / pengguna mengetik → tunda render, jangan timpa DOM.
   if (openSelectIn(container) || cardBusy(container)) {
@@ -1211,28 +1211,28 @@ export function renderEditableArray(type, containerId?) {
 // Render ulang SATU kartu item (dipakai updateArrayField pair-sync) — kartu
 // lain, termasuk dropdown yang terbuka di kartu itu, tidak tersentuh.
 function updateArrayCard(type, index) {
-  var container = $('c_' + type);
+  const container = $('c_' + type);
   if (!container) return;
-  var items = Array.isArray(latestCandidateData[type]) ? latestCandidateData[type] : [];
-  var card = container.querySelector('[data-idx="' + index + '"]');
+  const items = Array.isArray(latestCandidateData[type]) ? latestCandidateData[type] : [];
+  const card = container.querySelector('[data-idx="' + index + '"]');
   if (!card || !items[index]) return;
-  var fields = arrayFields[type];
-  var inputs = fields
+  const fields = arrayFields[type];
+  const inputs = fields
     .map(function (definition) {
       return renderItemField(type, index, items[index], definition);
     })
     .join('');
-  var grid = card.querySelector('.grid');
+  const grid = card.querySelector('.grid');
   if (grid) grid.innerHTML = inputs;
   ARRAY_SNAPSHOT[type] = arraySignature(type);
 }
 
 function renderItemField(type, index, item, definition) {
-  var field = definition[0],
+  const field = definition[0],
     label = window.tr(definition[1]),
     ctrl = definition[2],
     opts = definition[3];
-  var cellOpen = '<div><label class="label-micro">' + label + '</label>';
+  const cellOpen = '<div><label class="label-micro">' + label + '</label>';
   if (ctrl === 'select') {
     return (
       cellOpen +
@@ -1250,9 +1250,9 @@ function renderItemField(type, index, item, definition) {
   if (ctrl === 'select-pair') {
     // Dropdown BERPASANGAN: sisi ID & sisi JP sama-sama select dari registry
     // yang sama; onchange mengisi pasangannya otomatis (pair-sync).
-    var isJpSide = field.indexOf('_jp') !== -1;
-    var cur = String(item[field] || '').trim();
-    var html =
+    const isJpSide = field.indexOf('_jp') !== -1;
+    const cur = String(item[field] || '').trim();
+    let html =
       cellOpen +
       '<select class="input-micro' +
       (isJpSide ? ' text-pink-300 font-bold' : '') +
@@ -1264,11 +1264,11 @@ function renderItemField(type, index, item, definition) {
       field +
       '\',this.value)">';
     html += '<option value="">' + window.tr('form.ai_f_pilih') + '</option>';
-    var found = cur === '';
-    for (var i = 0; i < opts.length; i++) {
-      var val = isJpSide ? opts[i][1] : opts[i][0];
-      var lbl = isJpSide ? opts[i][1] + '（' + opts[i][0] + '）' : opts[i][0] + '（' + opts[i][1] + '）';
-      var sel = cur === String(val) ? ' selected' : '';
+    let found = cur === '';
+    for (let i = 0; i < opts.length; i++) {
+      const val = isJpSide ? opts[i][1] : opts[i][0];
+      const lbl = isJpSide ? opts[i][1] + '（' + opts[i][0] + '）' : opts[i][0] + '（' + opts[i][1] + '）';
+      const sel = cur === String(val) ? ' selected' : '';
       if (sel) found = true;
       html += '<option value="' + escapeHtml(String(val)) + '"' + sel + '>' + escapeHtml(lbl) + '</option>';
     }
@@ -1295,14 +1295,14 @@ function renderItemField(type, index, item, definition) {
     );
   }
   if (ctrl === 'month-year') {
-    var valStr = String(item[field] || '').trim();
-    var parts = valStr.split('-');
-    var yr = parts[0] || valStr;
-    var mo = parts[1] || '';
+    const valStr = String(item[field] || '').trim();
+    const parts = valStr.split('-');
+    let yr = parts[0] || valStr;
+    let mo = parts[1] || '';
     if (yr.length > 4) { yr = valStr; mo = ''; }
     
-    var yrHtml = '<select class="input-micro" style="width: 55%; display: inline-block; margin-right: 2%;" onchange="var m=this.nextElementSibling.value; updateArrayField(\'' + type + '\',' + index + ',\'' + field + '\', this.value + (this.value && m ? \'-\' + m : \'\'))">' + yearOptionsHtml(yr) + '</select>';
-    var moHtml = '<select class="input-micro" style="width: 43%; display: inline-block;" onchange="var y=this.previousElementSibling.value; updateArrayField(\'' + type + '\',' + index + ',\'' + field + '\', (y ? y : \'\') + (y && this.value ? \'-\' + this.value : \'\'))">' + monthOptionsHtml(mo) + '</select>';
+    const yrHtml = '<select class="input-micro" style="width: 55%; display: inline-block; margin-right: 2%;" onchange="var m=this.nextElementSibling.value; updateArrayField(\'' + type + '\',' + index + ',\'' + field + '\', this.value + (this.value && m ? \'-\' + m : \'\'))">' + yearOptionsHtml(yr) + '</select>';
+    const moHtml = '<select class="input-micro" style="width: 43%; display: inline-block;" onchange="var y=this.previousElementSibling.value; updateArrayField(\'' + type + '\',' + index + ',\'' + field + '\', (y ? y : \'\') + (y && this.value ? \'-\' + this.value : \'\'))">' + monthOptionsHtml(mo) + '</select>';
 
     return cellOpen + yrHtml + moHtml + '</div>';
   }
@@ -1335,11 +1335,11 @@ function renderItemField(type, index, item, definition) {
 }
 
 function paintArrayCards(type, container: HTMLElement) {
-  var items = Array.isArray(latestCandidateData[type]) ? latestCandidateData[type] : [];
-  var fields = arrayFields[type];
-  var cards = items
+  const items = Array.isArray(latestCandidateData[type]) ? latestCandidateData[type] : [];
+  const fields = arrayFields[type];
+  let cards = items
     .map(function (item, index) {
-      var inputs = fields
+      const inputs = fields
         .map(function (definition) {
           return renderItemField(type, index, item, definition);
         })
@@ -1397,21 +1397,21 @@ function paintArrayCards(type, container: HTMLElement) {
 // sisi (ID terisi, kanji kosong). Sebelum render, isi pasangan yang masih
 // kosong dari registry — kanji JP selalu pas tanpa aksi pengguna, dua arah.
 function autoPairFill() {
-  var changed = false;
+  let changed = false;
   Object.keys(ARRAY_PAIRS).forEach(function (k) {
-    var parts = k.split('.');
-    var type = parts[0];
-    var field = parts[1];
-    var pr = ARRAY_PAIRS[k];
-    var items = latestCandidateData[type];
+    const parts = k.split('.');
+    const type = parts[0];
+    const field = parts[1];
+    const pr = ARRAY_PAIRS[k];
+    const items = latestCandidateData[type];
     if (!Array.isArray(items)) return;
     items.forEach(function (it) {
       if (!it || typeof it !== 'object') return;
-      var src = String(it[field] || '').trim();
+      const src = String(it[field] || '').trim();
       if (!src) return;
-      var dst = String(it[pr.partner] || '').trim();
+      const dst = String(it[pr.partner] || '').trim();
       if (dst) return; // pasangan sudah terisi — jangan timpa
-      var val = pr.dir === 'id' ? pairJpOf(pr.pairs, src) : pairIdOf(pr.pairs, src);
+      const val = pr.dir === 'id' ? pairJpOf(pr.pairs, src) : pairIdOf(pr.pairs, src);
       if (val) {
         it[pr.partner] = val;
         changed = true;
@@ -1419,19 +1419,19 @@ function autoPairFill() {
     });
   });
   Object.keys(PAIRED_PARTNER).forEach(function (path) {
-    var partner = PAIRED_PARTNER[path];
-    var pairs = PAIRED_PARS[path];
+    const partner = PAIRED_PARTNER[path];
+    const pairs = PAIRED_PARS[path];
     if (!pairs) return;
-    var idVal = String(getByPath(latestCandidateData, path) || '').trim();
-    var jpCur = String(getByPath(latestCandidateData, partner) || '').trim();
+    const idVal = String(getByPath(latestCandidateData, path) || '').trim();
+    const jpCur = String(getByPath(latestCandidateData, partner) || '').trim();
     if (idVal && !jpCur) {
-      var jp = pairJpOf(pairs, idVal);
+      const jp = pairJpOf(pairs, idVal);
       if (jp) {
         setByPath(latestCandidateData, partner, jp);
         changed = true;
       }
     } else if (!idVal && jpCur) {
-      var id = pairIdOf(pairs, jpCur);
+      const id = pairIdOf(pairs, jpCur);
       if (id) {
         setByPath(latestCandidateData, path, id);
         changed = true;
@@ -1446,7 +1446,7 @@ export function updateFormUI() {
     latestCandidateData && typeof latestCandidateData === 'object' ? latestCandidateData : {};
   autoPairFill();
   Object.keys(fieldPaths).forEach(function (id) {
-    var pairSel = STATIC_PAIR_SELECTS[id];
+    const pairSel = STATIC_PAIR_SELECTS[id];
     if (pairSel) {
       // Field sudah jadi select pasangan — refresh opsinya dari data, bukan
       // setValue (yang menulis .value pada input readonly yang sudah diganti).
@@ -1467,8 +1467,8 @@ export function updateFormUI() {
   renderEditableArray('keluarga', 'c_keluarga');
 
   // --- MUNCULKAN FOTO LAMA DARI DATABASE ---
-  var photoUrl = latestCandidateData.pas_photo || getByPath(latestCandidateData, 'uploads.photo');
-  var imgPreview = $('previewFoto');
+  const photoUrl = latestCandidateData.pas_photo || getByPath(latestCandidateData, 'uploads.photo');
+  const imgPreview = $('previewFoto');
 
   // Jika ada URL foto di database, BUKAN tanda strip, dan pelamar belum upload foto baru
   if (photoUrl && photoUrl !== '-' && !currentPhotoBase64 && imgPreview) {
@@ -1491,14 +1491,14 @@ export function updateFormUI() {
     ['ijazahSma', 'status_ijazahSma', !!currentIjazahSmaFile],
     ['univ', 'status_univ', !!currentUnivFile],
   ].forEach(function (pair) {
-    var key = pair[0] as string,
+    const key = pair[0] as string,
       statusId = pair[1] as string,
       sudahPilihBaru = pair[2] as boolean;
-    var url = getByPath(latestCandidateData, 'uploads.' + key);
-    var statusEl = $(statusId);
+    const url = getByPath(latestCandidateData, 'uploads.' + key);
+    const statusEl = $(statusId);
     if (!statusEl || sudahPilihBaru) return;
     if (url && url !== '-') {
-      var namaFile = escapeHtml((url.split('/').pop() || key.toUpperCase()).replace(/_+/g, ' '));
+      const namaFile = escapeHtml((url.split('/').pop() || key.toUpperCase()).replace(/_+/g, ' '));
       statusEl.innerHTML =
         '<i class="fas fa-check-circle"></i> ' +
         window.tr('form.ai_status_existing') +
@@ -1515,25 +1515,25 @@ export function updateFormUI() {
 }
 
 export function compressImage(event) {
-  var file = event.target.files[0];
+  const file = event.target.files[0];
   if (!file) return;
   // Guard seragam: format (image/*) + ukuran maks 10 MB — pesan jelas + reset.
   if (!window.cekUploadFile(event.target, { maxMb: 10 })) return;
-  var status = $('compressStatus'),
+  const status = $('compressStatus'),
     preview = $('previewFoto');
   status.classList.remove('hidden');
   status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + window.tr('form.ai_f_proses');
-  var reader = new FileReader();
+  const reader = new FileReader();
   reader.readAsDataURL(file);
   reader.onload = function (e) {
-    var img = new Image();
+    const img = new Image();
     img.src = e.target?.result as string;
     img.onload = function () {
-      var canvas = document.createElement('canvas'),
-        ctx = canvas.getContext('2d');
-      var w = img.width,
-        h = img.height,
-        MAX = 600;
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      let w = img.width;
+      let h = img.height;
+      const MAX = 600;
       if (w > h && w > MAX) {
         h *= MAX / w;
         w = MAX;
@@ -1544,7 +1544,7 @@ export function compressImage(event) {
       canvas.width = w;
       canvas.height = h;
       ctx.drawImage(img, 0, 0, w, h);
-      var dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
       preview.src = dataUrl;
       preview.classList.remove('hidden');
       status.innerHTML = '<i class="fas fa-check-circle"></i> ' + window.tr('form.ai_f_berhasil');
@@ -1555,11 +1555,11 @@ export function compressImage(event) {
 }
 
 export function handleDocUpload(event, type) {
-  var file = event.target.files[0];
+  const file = event.target.files[0];
   if (!file) return;
   // Guard seragam: format sesuai accept + ukuran maks 3 MB — pesan jelas + reset.
   if (!window.cekUploadFile(event.target, { maxMb: 3 })) return;
-  var statusEl = $('status_' + type);
+  const statusEl = $('status_' + type);
   statusEl.classList.remove('hidden');
   statusEl.innerHTML =
     '<i class="fas fa-spinner fa-spin text-amber-400"></i> ' + window.tr('form.ai_f_membaca');
@@ -1597,7 +1597,7 @@ export function handleDocUpload(event, type) {
 }
 
 async function uploadFilesDirectlyBase64(filesObj, folder) {
-  var toUpload = Object.keys(filesObj).filter(function (k) {
+  const toUpload = Object.keys(filesObj).filter(function (k) {
     return filesObj[k] && filesObj[k].data;
   });
   if (toUpload.length === 0) return {};
@@ -1605,28 +1605,28 @@ async function uploadFilesDirectlyBase64(filesObj, folder) {
   // Upload LANGSUNG ke Cloudinary: base64 hasil downscaleScanImage diubah
   // kembali jadi File, lalu dikirim ke Cloudinary. Backend hanya menerima
   // string URL hasil upload (tidak ada lagi getUploadUrls / Supabase).
-  var uploadPromises = toUpload.map(function(key) {
-    var file = filesObj[key];
-    var blob = base64ToBlob(file.data, file.mime);
-    var f = new File([blob], file.name || key + '.jpg', {
+  const uploadPromises = toUpload.map(function(key) {
+    const file = filesObj[key];
+    const blob = base64ToBlob(file.data, file.mime);
+    const f = new File([blob], file.name || key + '.jpg', {
       type: file.mime || 'application/octet-stream',
     });
     return uploadToCloudinary(f, {}).then(function(url) { return { key: key, url: url }; });
   });
-  var results = await Promise.all(uploadPromises);
-  var uploadedUrls: Record<string, any> = {};
+  const results = await Promise.all(uploadPromises);
+  const uploadedUrls: Record<string, any> = {};
   results.forEach(function(r) { uploadedUrls[r.key] = r.url; });
   return uploadedUrls;
 }
 
 export async function saveToDatabase() {
-  var btn = $('btnSaveDB');
+  const btn = $('btnSaveDB');
   latestCandidateData =
     latestCandidateData && typeof latestCandidateData === 'object' ? latestCandidateData : {};
   // Jaring penyaman: kalau state nama kosong padahal siswa sudah mengetiknya
   // di field form (mis. autofill dari database menimpa state setelah input),
   // pakai nilai yang terlihat di layar — jangan batalkan penyimpanan.
-  var namaDom = $('f_nama');
+  const namaDom = $('f_nama');
   if (!latestCandidateData.identitas || !latestCandidateData.identitas.nama_lengkap) {
     if (namaDom && String(namaDom.value || '').trim()) {
       setByPath(latestCandidateData, 'identitas.nama_lengkap', String(namaDom.value).trim());
@@ -1641,7 +1641,7 @@ export async function saveToDatabase() {
     console.warn('[saveToDatabase] dibatalkan: identitas.nama_lengkap masih kosong');
     window.showToast(window.tr('form.ai_empty_chat_hint'), 'error');
     // Tandai field nama supaya jelas apa yang kurang (bukan hanya toast).
-    var namaEl = $('f_nama');
+    const namaEl = $('f_nama');
     if (namaEl) {
       namaEl.classList.remove('border-sky-400');
       namaEl.classList.add('border-rose-500');
@@ -1663,7 +1663,7 @@ export async function saveToDatabase() {
   // (JPG/PNG — otomatis di-downscale handleDocUpload) ATAU PDF. Pas foto
   // sudah dijamin JPG/PNG oleh compressImage (canvas). Sinkron dengan
   // aturan per-prefix di storage-helper.ts.
-  var extCheck = [
+  const extCheck = [
     { f: currentJftFile, t: 'doc' },
     { f: currentSswFile, t: 'doc' },
     { f: currentKtpFile, t: 'foto' },
@@ -1675,12 +1675,12 @@ export async function saveToDatabase() {
   ].filter(function (x) {
     return !!x.f;
   });
-  for (var ei = 0; ei < extCheck.length; ei++) {
-    var nm = String(extCheck[ei].f.name || '')
+  for (let ei = 0; ei < extCheck.length; ei++) {
+    const nm = String(extCheck[ei].f.name || '')
       .split('.')
       .pop()
       .toLowerCase();
-    var ok = extCheck[ei].t === 'foto' ? ['pdf', 'jpg', 'jpeg', 'png'] : ['pdf'];
+    const ok = extCheck[ei].t === 'foto' ? ['pdf', 'jpg', 'jpeg', 'png'] : ['pdf'];
     if (ok.indexOf(nm) === -1) {
       btn.disabled = false;
       btn.innerHTML = window.tr('form.ai_save_db');
@@ -1693,10 +1693,10 @@ export async function saveToDatabase() {
   }
 
   try {
-    var folderName =
+    const folderName =
       'master/' +
       latestCandidateData.identitas.nama_lengkap.toUpperCase().replace(/[^A-Z0-9_-]/g, '_');
-    var filesToUpload = {
+    const filesToUpload = {
       fotoFile: currentPhotoBase64
         ? { data: currentPhotoBase64, name: 'PAS_PHOTO.jpg', mime: 'image/jpeg' }
         : null,
@@ -1710,9 +1710,9 @@ export async function saveToDatabase() {
       univFile: currentUnivFile,
     };
     btn.innerHTML = '<i class="fas fa-cloud-upload-alt fa-spin"></i> Mengunggah dokumen...';
-    var uploadedUrls = await uploadFilesDirectlyBase64(filesToUpload, folderName);
+    const uploadedUrls = await uploadFilesDirectlyBase64(filesToUpload, folderName);
 
-    var payload = {
+    const payload = {
       identitas: latestCandidateData.identitas,
       fisik: latestCandidateData.fisik,
       medis: latestCandidateData.medis,
@@ -1735,7 +1735,7 @@ export async function saveToDatabase() {
 
     btn.innerHTML = '<i class="fas fa-paper-plane fa-spin"></i> Menyimpan data...';
     try {
-      var res = await withRetry(function() { return window.callAPI('submitDataAsj', payload); }, 2, 2000);
+      const res = await withRetry(function() { return window.callAPI('submitDataAsj', payload); }, 2, 2000);
       btn.disabled = false;
       if (res.success) {
         btn.innerHTML = '<i class="fas fa-check"></i> ' + window.tr('form.ai_save_success_btn');

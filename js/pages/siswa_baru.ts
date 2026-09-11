@@ -20,14 +20,14 @@ import { idbGet, idbSet, idbRemove } from '../core/idb.ts';
 export function $(id) {
   return document.getElementById(id);
 }
-var chatHistory = [];
-var candidateData: Record<string, any> = {};
-var uploadedFiles = { ktp: null, kk: null, ijazah: null };
-var urlJeklin =
+let chatHistory = [];
+let candidateData: Record<string, any> = {};
+let uploadedFiles = { ktp: null, kk: null, ijazah: null };
+const urlJeklin =
   'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/jeklin.png';
 const DRAFT_KEY = 'asj_siswa_draft_v1'; // Kunci untuk LocalStorage
 
-var fieldPaths = {
+const fieldPaths = {
   f_nama: 'nama',
   f_ttl: 'ttl',
   f_gender: 'gender',
@@ -43,12 +43,12 @@ var fieldPaths = {
 // TANPA memaksa pindah tab saat iPhone memicu "resize" tiap scroll
 // (URL bar Safari naik/turun) — penyebab panel "puter-puter". Pola sama
 // dengan ai_form.js.
-var lastMobileTab = 'chat';
-var wasDesktop = window.innerWidth >= 768;
+let lastMobileTab = 'chat';
+let wasDesktop = window.innerWidth >= 768;
 export function switchTab(target) {
   lastMobileTab = target;
   if (window.innerWidth >= 768) return;
-  var cPanel = $('chatPanel'),
+  const cPanel = $('chatPanel'),
     fPanel = $('formPanel'),
     tChat = $('btnTabChat'),
     tForm = $('btnTabForm');
@@ -78,7 +78,7 @@ function saveToLocal() {
       files: uploadedFiles,
       savedAt: Date.now(),
     };
-    var payload = JSON.stringify(draft);
+    const payload = JSON.stringify(draft);
     idbSet(DRAFT_KEY, payload).catch(function () {
       try { localStorage.setItem(DRAFT_KEY, payload); } catch (_) {}
     });
@@ -90,7 +90,7 @@ function saveToLocal() {
 export async function initApp() {
   // Izinkan form diedit manual jika malas chat
   Object.keys(fieldPaths).forEach(function (id) {
-    var el = $(id);
+    const el = $(id);
     if (el) {
       el.removeAttribute('readonly');
       el.addEventListener('input', function () {
@@ -105,7 +105,7 @@ export async function initApp() {
   // Show loading skeleton while restoring
   $('chatBox').innerHTML = '<div class="flex gap-2 fade-in"><div class="w-8 h-8 rounded-full bg-amber-500 flex-shrink-0 animate-pulse"></div><div class="bg-slate-800 p-3 rounded-xl rounded-tl-none border border-slate-700 text-xs text-slate-400 animate-pulse">Memuat data...</div></div>';
 
-  var savedDraft: string | null = null;
+  let savedDraft: string | null = null;
   try {
     savedDraft = await idbGet(DRAFT_KEY);
     if (savedDraft && typeof savedDraft !== 'string') savedDraft = null;
@@ -157,7 +157,7 @@ export async function initApp() {
 
   // Remove loading skeleton if chat content rendered
   if (chatHistory.length > 0) {
-    var skeleton = $('chatBox').querySelector('.animate-pulse');
+    const skeleton = $('chatBox').querySelector('.animate-pulse');
     if (skeleton) skeleton.closest('.flex.gap-2')?.remove();
   }
   updateFormUI(); // Render isian form
@@ -173,14 +173,14 @@ function handleResize() {
   // iPhone Safari memicu "resize" tiap scroll (URL bar naik/turun) —
   // hanya bereaksi saat MENYEBRANG breakpoint md (mis. rotasi layar),
   // dan kembali ke tab terakhir yang aktif, bukan paksa "chat".
-  var isDesktop = window.innerWidth >= 768;
+  const isDesktop = window.innerWidth >= 768;
   if (isDesktop === wasDesktop) return;
   wasDesktop = isDesktop;
   if (!isDesktop) switchTab(lastMobileTab);
 }
 
 function sendWelcomeMessage() {
-  var welcome = window.tr('form.siswa_welcome');
+  const welcome = window.tr('form.siswa_welcome');
   appendHTML('ai', welcome);
   // Format sama dengan pesan lain ({role, content}) supaya restore draft
   // dan history yang dikirim ke server konsisten.
@@ -196,10 +196,10 @@ export function handleEnter(e) {
 }
 
 function appendHTML(sender, text) {
-  var isUser = sender === 'user';
-  var cleanText = escapeHtml(text).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-  var userIcon = '<i class="fas fa-user"></i>';
-  var imgPreview = document.getElementById('previewFoto');
+  const isUser = sender === 'user';
+  const cleanText = escapeHtml(text).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+  let userIcon = '<i class="fas fa-user"></i>';
+  const imgPreview = document.getElementById('previewFoto');
   if (
     imgPreview &&
     imgPreview.src &&
@@ -211,9 +211,9 @@ function appendHTML(sender, text) {
       imgPreview.src +
       '" alt="" class="w-full h-full object-cover" onerror="this.outerHTML=\'<i class=\\\'fas fa-user\\\'></i>\'">';
   }
-  var aiIcon =
+  const aiIcon =
     '<img src="' + urlJeklin + '" alt="" class="w-full h-full rounded-full object-cover">';
-  var htmlStr =
+  const htmlStr =
     '<div class="flex gap-2 ' +
     (isUser ? 'flex-row-reverse' : '') +
     ' fade-in"><div class="w-8 h-8 rounded-full ' +
@@ -234,7 +234,7 @@ function appendHTML(sender, text) {
 }
 
 function setValue(id, val) {
-  var el = $(id);
+  const el = $(id);
   if (!el || !val) return;
   if (el.value !== val) {
     el.value = val;
@@ -252,9 +252,9 @@ function updateFormUI() {
 }
 
 export function sendMessage() {
-  var inputEl = $('userInput'),
+  const inputEl = $('userInput'),
     btnEl = $('sendBtn');
-  var text = inputEl.value.trim();
+  const text = inputEl.value.trim();
   if (!text) return;
 
   appendHTML('user', text);
@@ -266,15 +266,15 @@ export function sendMessage() {
   btnEl.disabled = true;
 
   // PERBAIKAN: Ubah teks loading saat chat dikirim agar tidak "tersangkut" teks lama
-  var typingEl = $('aiTypingStatus');
+  const typingEl = $('aiTypingStatus');
   if (typingEl)
     typingEl.innerHTML =
       '<i class="fas fa-magic fa-spin mr-2"></i> ' + window.tr('form.ai_chat_typing');
   if ($('aiTypingStatus')) $('aiTypingStatus').classList.remove('hidden');
 
   // Trim history to last 20 messages to avoid Gemini token overflow
-  var trimmedHistory = chatHistory.slice(-20);
-  var payloadToAI = { history: trimmedHistory, currentData: candidateData };
+  const trimmedHistory = chatHistory.slice(-20);
+  const payloadToAI = { history: trimmedHistory, currentData: candidateData };
 
   withRetry(function() {
     return window.callAPI('processSiswaAIChat', payloadToAI);
@@ -283,14 +283,14 @@ export function sendMessage() {
       inputEl.disabled = false;
       btnEl.disabled = false;
       inputEl.focus();
-      var tsEl = $('aiTypingStatus');
+      const tsEl = $('aiTypingStatus');
       if (tsEl) tsEl.classList.add('hidden');
 
       if (res.reply) {
-        var finalReply = res.reply;
+        let finalReply = res.reply;
         if (typeof res.reply === 'string' && res.reply.startsWith('{')) {
           try {
-            var p = JSON.parse(res.reply.replace(/\n/g, '\\n'));
+            const p = JSON.parse(res.reply.replace(/\n/g, '\\n'));
             if (p.reply) {
               finalReply = p.reply;
             }
@@ -298,7 +298,7 @@ export function sendMessage() {
               res.data = Object.assign({}, res.data, p.data);
             }
           } catch (e) {
-            var match = res.reply.match(/"reply"\s*:\s*"([^]*?)"\s*,/);
+            const match = res.reply.match(/"reply"\s*:\s*"([^]*?)"\s*,/);
             if (match && match[1]) {
               finalReply = match[1];
             }
@@ -319,18 +319,18 @@ export function sendMessage() {
     .catch(function (err) {
       inputEl.disabled = false;
       btnEl.disabled = false;
-      var tsEl2 = $('aiTypingStatus');
+      const tsEl2 = $('aiTypingStatus');
       if (tsEl2) tsEl2.classList.add('hidden');
       appendHTML('ai', window.tr('form.ai_chat_error'));
     });
 }
 
 export function handleDocUpload(event, type) {
-  var file = event.target.files[0];
+  const file = event.target.files[0];
   if (!file) return;
   // Guard seragam: format sesuai accept + ukuran maks 3 MB — alert jelas + reset.
   if (!window.cekUploadFile(event.target, { maxMb: 3 })) return;
-  var statusEl = $('status_' + type);
+  const statusEl = $('status_' + type);
   statusEl.classList.remove('hidden');
   statusEl.innerHTML =
     // FIX (audit 2026-09-07): dulu key 'ui.uploading_shard' tidak ada di
@@ -346,7 +346,7 @@ export function handleDocUpload(event, type) {
 }
 
 async function uploadFilesDirectlyBase64(filesObj, folder) {
-  var toUpload = Object.keys(filesObj).filter(function (k) {
+  const toUpload = Object.keys(filesObj).filter(function (k) {
     return filesObj[k] && filesObj[k].data;
   });
   if (toUpload.length === 0) return {};
@@ -354,16 +354,16 @@ async function uploadFilesDirectlyBase64(filesObj, folder) {
   // Upload LANGSUNG ke Cloudinary: base64 diubah kembali jadi File, lalu
   // dikirim ke Cloudinary. Backend hanya menerima string URL hasil upload
   // (tidak ada lagi getUploadUrls / Supabase Storage).
-  var uploadedUrls: Record<string, any> = {};
-  var uploadPromises = toUpload.map(function(key) {
-    var file = filesObj[key];
-    var blob = base64ToBlob(file.data, file.mime);
-    var f = new File([blob], file.name || key + '.jpg', {
+  const uploadedUrls: Record<string, any> = {};
+  const uploadPromises = toUpload.map(function(key) {
+    const file = filesObj[key];
+    const blob = base64ToBlob(file.data, file.mime);
+    const f = new File([blob], file.name || key + '.jpg', {
       type: file.mime || 'application/octet-stream',
     });
     return uploadToCloudinary(f as File, {}).then(function(url) { return { key: key, url: url }; });
   });
-  var results = await Promise.all(uploadPromises);
+  const results = await Promise.all(uploadPromises);
   results.forEach(function(r) { uploadedUrls[r.key] = r.url; });
   return uploadedUrls;
 }
@@ -396,12 +396,12 @@ export async function saveToDatabase() {
   }
 
   // === VALIDASI FORMAT WA ===
-  var waClean = String(candidateData.wa_siswa || '').replace(/\D/g, '');
+  const waClean = String(candidateData.wa_siswa || '').replace(/\D/g, '');
   if (!/^62\d{10,13}$/.test(waClean)) {
     window.showToast('Nomor WA Siswa harus 62xxxxxxxxxx (12-15 digit).', 'error');
     return;
   }
-  var ortuClean = String(candidateData.wa_ortu || '').replace(/\D/g, '');
+  const ortuClean = String(candidateData.wa_ortu || '').replace(/\D/g, '');
   if (!/^62\d{10,13}$/.test(ortuClean)) {
     window.showToast('Nomor WA Orang Tua harus 62xxxxxxxxxx (12-15 digit).', 'error');
     return;
@@ -413,24 +413,24 @@ export async function saveToDatabase() {
     return;
   }
 
-  var btn = $('btnSaveDB');
+  const btn = $('btnSaveDB');
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + window.tr('form.siswa_sending') + '…';
 
   try {
-    var folderName =
+    const folderName =
       'siswa/' + (candidateData.nama || 'UMUM').toUpperCase().replace(/[^A-Z0-9_-]/g, '_');
 
     // Progress: upload files
     btn.innerHTML = '<i class="fas fa-cloud-upload-alt fa-spin"></i> Mengunggah dokumen...';
-    var uploadedUrls = await uploadFilesDirectlyBase64(
+    const uploadedUrls = await uploadFilesDirectlyBase64(
       { ktp: uploadedFiles.ktp, kk: uploadedFiles.kk, ijazah: uploadedFiles.ijazah },
       folderName,
     );
 
     // Progress: submitting
     btn.innerHTML = '<i class="fas fa-paper-plane fa-spin"></i> Menyimpan data...';
-    var payload = Object.assign({}, candidateData, {
+    const payload = Object.assign({}, candidateData, {
       ktp: uploadedUrls.ktp || null,
       kk: uploadedUrls.kk || null,
       ijazah: uploadedUrls.ijazah || null,

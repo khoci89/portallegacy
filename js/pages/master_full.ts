@@ -15,7 +15,7 @@ import { uploadToCloudinary } from '../cloudinary.ts';
 
 // Bahasa terpilih (asj_lang) ikut serta; label statis diterjemahkan onload.
 document.addEventListener('DOMContentLoaded', function () {
-  var lb = document.getElementById('lang-btn-mf');
+  const lb = document.getElementById('lang-btn-mf');
   if (lb) lb.textContent = window.CURRENT_LANG === 'jp' ? 'ID' : 'JP';
   if (typeof window.renderLanguageLight === 'function') window.renderLanguageLight();
 });
@@ -25,19 +25,19 @@ document.addEventListener('DOMContentLoaded', function () {
 (function () {
   function cleanPhoneJS(wa) {
     if (!wa) return '';
-    var s = String(wa).replace(/\D/g, '');
+    let s = String(wa).replace(/\D/g, '');
     if (s.startsWith('0')) s = '62' + s.substring(1);
     else if (s.startsWith('8')) s = '62' + s;
     return s;
   }
-  var p = new URLSearchParams(window.location.search);
-  var wa = cleanPhoneJS(p.get('wa') || '');
-  var nama = (p.get('nama') || '').trim();
-  var wad = document.getElementById('wa-display');
+  const p = new URLSearchParams(window.location.search);
+  const wa = cleanPhoneJS(p.get('wa') || '');
+  const nama = (p.get('nama') || '').trim();
+  const wad = document.getElementById('wa-display');
   if (wad) wad.textContent = wa;
-  var wai = document.getElementById('wa');
+  const wai = document.getElementById('wa');
   if (wai) wai.value = wa;
-  var nm = document.getElementById('nama');
+  const nm = document.getElementById('nama');
   if (nm) nm.value = nama;
 })();
 
@@ -180,7 +180,7 @@ export async function gateLogin() {
 
 // ===== DAFTAR DROPDOWN DWI BAHASA (ID/JP) =====
 // 16 bidang SSW (Tokutei Ginou) resmi di Indonesia.
-var SSW_LIST = [
+const SSW_LIST = [
   ['KAIGO', 'KAIGO (介護)'],
   ['BUILDING CLEANING', 'BUILDING CLEANING (ビルクリーニング)'],
   ['FOUNDRY & PLASTIC', 'FOUNDRY & PLASTIC (素形材産業)'],
@@ -199,7 +199,7 @@ var SSW_LIST = [
   ['WOOD INDUSTRY', 'WOOD INDUSTRY (木材産業)'],
 ];
 // Pekerjaan umum di Indonesia (Jabatan / Posisi).
-var PEKERJAAN_LIST = [
+const PEKERJAAN_LIST = [
   ['OPERATOR PRODUKSI', 'OPERATOR PRODUKSI (工場作業員)'],
   ['ADMIN / STAFF ADMIN', 'ADMIN / STAFF ADMIN (事務員)'],
   ['SALES / MARKETING', 'SALES / MARKETING (営業)'],
@@ -227,7 +227,7 @@ var PEKERJAAN_LIST = [
   ['BELUM BEKERJA', 'BELUM BEKERJA (無職)'],
 ];
 function sswOptionsHtml() {
-  var h = '<option value="">Pilih / 選択</option>';
+  let h = '<option value="">Pilih / 選択</option>';
   SSW_LIST.forEach(function (pair) {
     h += '<option value="' + pair[0] + '">' + pair[1] + '</option>';
   });
@@ -235,7 +235,7 @@ function sswOptionsHtml() {
   return h;
 }
 function pekerjaanOptionsHtml() {
-  var h = '<option value="">Pilih / 選択</option>';
+  let h = '<option value="">Pilih / 選択</option>';
   PEKERJAAN_LIST.forEach(function (pair) {
     h += '<option value="' + pair[0] + '">' + pair[1] + '</option>';
   });
@@ -243,11 +243,11 @@ function pekerjaanOptionsHtml() {
   return h;
 }
 function buildSswSelect(id) {
-  var el = getEl(id);
+  const el = getEl(id);
   if (el) el.innerHTML = sswOptionsHtml();
 }
 export function onSswSelect(id) {
-  var sel = getEl(id),
+  const sel = getEl(id),
     manual = getEl(id + '_manual');
   if (!sel) return;
   if (sel.value === '__LAINNYA__') {
@@ -261,7 +261,7 @@ export function onSswSelect(id) {
   }
 }
 export function onPekerjaanSelect(i) {
-  var sel = getEl('job_pos_' + i),
+  const sel = getEl('job_pos_' + i),
     manual = getEl('job_pos_manual_' + i);
   if (!sel) return;
   if (sel.value === '__LAINNYA__') {
@@ -275,7 +275,7 @@ export function onPekerjaanSelect(i) {
   }
 }
 export function onFamPekerjaanSelect(i) {
-  var sel = getEl('fam_job_' + i),
+  const sel = getEl('fam_job_' + i),
     manual = getEl('fam_job_manual_' + i);
   if (!sel) return;
   if (sel.value === '__LAINNYA__') {
@@ -292,8 +292,8 @@ export function onFamPekerjaanSelect(i) {
 // di kotak manual (nilai lama TIDAK hilang saat disimpan ulang).
 function fillManualSelect(sel, manual, value) {
   if (!sel) return;
-  var match = false;
-  for (var k = 0; k < sel.options.length; k++) {
+  let match = false;
+  for (let k = 0; k < sel.options.length; k++) {
     if (sel.options[k].value === value) match = true;
   }
   if (value && !match) {
@@ -411,8 +411,8 @@ window.onload = function () {
           setVal('panggilanKatakana', data['PANGGILAN_KATAKANA']);
 
           // Lisensi SSW (comma-separated → 2 dropdowns)
-          var lisensiVal = String(data['BIDANGSSW'] || data['SSW'] || '');
-          var lisensiParts = lisensiVal.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+          const lisensiVal = String(data['BIDANGSSW'] || data['SSW'] || '');
+          const lisensiParts = lisensiVal.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
           fillManualSelect(getEl('lisensi'), getEl('lisensi_manual'), lisensiParts[0] || '');
           fillManualSelect(getEl('lisensi2'), getEl('lisensi2_manual'), lisensiParts[1] || '');
 
@@ -464,7 +464,7 @@ window.onload = function () {
             setVal('tglTerbitPaspor', formatDate(data['TGL_TERBIT_PASPORT']));
           if (data['EXP_PASPORT']) setVal('expPaspor', formatDate(data['EXP_PASPORT']));
 
-          var fileSavedMsg =
+          const fileSavedMsg =
             "<span style='color:#10b981; font-weight:700;'><i class='fas fa-check-circle'></i> " +
             window.tr('form.mf_file_saved') +
             '</span>';
@@ -761,7 +761,7 @@ export async function submitMaster(isDraft) {
         if (loadingBox) loadingBox.classList.add('hidden');
         if (res && res.sessionInvalid) { showLoginGate(window.tr('form.mf_sesi_simpan')); return; }
         if (res.success) {
-          var msg = isDraft ? window.tr('form.mf_alert_draft') : window.tr('form.mf_alert_final');
+          let msg = isDraft ? window.tr('form.mf_alert_draft') : window.tr('form.mf_alert_final');
           if (res.translationSkipped) msg += window.tr('form.mf_alert_translate');
           window.showToast(msg, 'success');
           return;

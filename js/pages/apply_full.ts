@@ -21,12 +21,12 @@ import { idbGet, idbSet, idbRemove } from '../core/idb.ts';
 (function () {
   function cleanPhoneJS(wa) {
     if (!wa) return '';
-    var s = String(wa).replace(/\D/g, '');
+    let s = String(wa).replace(/\D/g, '');
     if (s.startsWith('0')) s = '62' + s.substring(1);
     else if (s.startsWith('8')) s = '62' + s;
     return s;
   }
-  var p = new URLSearchParams(window.location.search);
+  const p = new URLSearchParams(window.location.search);
   document.getElementById('job').value = (p.get('job') || '').trim();
   document.getElementById('bidang').value = (p.get('bidang') || '').trim();
   document.getElementById('wa').value = cleanPhoneJS(p.get('wa') || '');
@@ -43,7 +43,7 @@ const DRAFT_KEY = 'asj_apply_draft_v1';
 function saveDraft() {
   try {
     const d = { step: currentStep, nama: $('nama')?.value||'', email: $('email')?.value||'', wa: $('wa')?.value||'', gender: $('gender')?.value||'', usia: $('usia')?.value||'', tb: $('tb')?.value||'', bb: $('bb')?.value||'', savedAt: Date.now() };
-    var payload = JSON.stringify(d);
+    const payload = JSON.stringify(d);
     idbSet(DRAFT_KEY, payload).catch(function () {
       try { localStorage.setItem(DRAFT_KEY, payload); } catch (_) {}
     });
@@ -51,7 +51,7 @@ function saveDraft() {
 }
 async function restoreDraft() {
   try {
-    var r: string | null = null;
+    let r: string | null = null;
     try {
       r = await idbGet(DRAFT_KEY);
       if (r && typeof r !== 'string') r = null;
@@ -112,7 +112,7 @@ function cekRiwayat() {
       if (res.gender) {
         // DB menyimpan 'perempuan'/'laki-laki' (huruf kecil) — cocokkan
         // case-insensitive dgn opsi select (LAKI-LAKI/PEREMPUAN).
-        var gOpt = Array.prototype.find.call($('gender').options, function (o) {
+        const gOpt = Array.prototype.find.call($('gender').options, function (o) {
           return o.value.toLowerCase() === String(res.gender).toLowerCase();
         });
         if (gOpt) $('gender').value = gOpt.value;
@@ -122,7 +122,7 @@ function cekRiwayat() {
       if (res.bb) $('bb').value = res.bb;
 
       // Jika file sudah ada di database, lewati wajib upload dan munculkan Badge Hijau
-      var photoUrl = res.pasPhoto || res.photoUrl; // backend kirim pasPhoto
+      const photoUrl = res.pasPhoto || res.photoUrl; // backend kirim pasPhoto
       if (photoUrl && photoUrl !== '-') {
         oldPhotoUrl = photoUrl;
         $('photoInfo').innerHTML =
@@ -158,13 +158,13 @@ function cekRiwayat() {
     }
     // PERINGATAN MULTI-APPLY: WA sudah LULUS untuk job LAIN — tampilkan
     // riwayat supaya kandidat sadar sebelum mengirim lamaran baru.
-    var warnEl = $('wa-warn');
+    const warnEl = $('wa-warn');
     if (warnEl) {
-      var curJob = ($('job').value || '').trim();
+      const curJob = ($('job').value || '').trim();
       // Dedupe per kode job — baris duplikat di mail tidak boleh
       // membuat kode yang sama muncul berkali-kali di peringatan.
-      var lulusLain = [];
-      var seenWarnCode: Record<string, any> = {};
+      const lulusLain = [];
+      const seenWarnCode: Record<string, any> = {};
       ((res && res.applications) || []).forEach(function (a) {
         if (
           a &&
@@ -178,7 +178,7 @@ function cekRiwayat() {
         }
       });
       if (lulusLain.length > 0) {
-        var daftar = lulusLain
+        const daftar = lulusLain
           .map(function (a) {
             return a.code;
           })
