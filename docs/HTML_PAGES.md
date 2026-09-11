@@ -1,6 +1,7 @@
 # HTML Pages — Quick Reference
 
 > Index ringkas semua halaman HTML. Detail lengkap ada di `docs/*-DEEP.md`.
+> Terakhir diperbarui: 2026-09-11.
 
 ---
 
@@ -25,7 +26,7 @@ Halaman Standalone (type="module", entry sendiri):
 
 | Halaman | Entry Point | Backend Actions | DB Tables | DEEP Doc |
 |---------|-------------|-----------------|-----------|----------|
-| `index.html` | bundle | 16 actions | multiple | `index-admin-DEEP.md` |
+| `index.html` | bundle (`app-e1672c281c.js`) | 16 actions | multiple | `index-admin-DEEP.md` |
 | `admin.html` | bundle (sama) | 16 actions | multiple | `index-admin-DEEP.md` |
 | `apply-full.html` | `js/pages/apply_full.ts` | `cekDataPelamar`, `submitApply` | `database_asj_form`, `database_candidate`, `master_database_candidate` | `apply-full-DEEP.md` |
 | `master-full.html` | `js/pages/master_full.ts` | `loginKandidat`, `getMasterDataByWa`, `submitMasterForm` | `master_database_candidate`, `database_candidate` | `master-full-DEEP.md` |
