@@ -1,262 +1,216 @@
-# siswa-baru.html — Reference
+# siswa-baru.html — Deep Analysis
 
-> Pendaftaran siswa baru via chat AI (Qween Jeklin) + form + upload berkas.
+> Deep scan: 2026-09-11. Standalone page (type="module") — AI chat + student registration.
+> Entry point: `js/pages/siswa_baru.ts` → `js/pages/siswa_baru.js`
 
----
-
-## 1. Arsitektur Halaman
-
-```
-siswa-baru.html (130 baris)
-├── <head> — Meta, CSS inline, shared partials
-├── <body data-page="siswa-baru"> — Split view (chat + form)
-│   ├── BACK TO PORTAL — Tombol kembali (fixed top-left)
-│   ├── SKIP LINK — Aksesibilitas
-│   ├── MOBILE TAB BAR — Chat Jeklin | Form Siswa (mobile only)
-│   ├── CHAT PANEL (40% desktop / full mobile)
-│   │   ├── Chat Header — Logo Jeklin + status
-│   │   ├── Chat Box — Daftar pesan (aria-live="polite")
-│   │   └── Chat Input — Text input + send button
-│   └── FORM PANEL (60% desktop / full mobile)
-│       ├── Header — Logo ASJ + SUBMIT DATA button
-│       ├── AI Typing Status — Loading indicator
-│       ├── BIODATA BOX — 9 fields (readonly → editable)
-│       └── UPLOAD BOX — 3 file uploads (KTP, KK, Ijazah)
-├── SCRIPTS — ESM modules
-└── END
-```
-
----
-
-## 2. Dependensi
-
-### CSS
-
-| File | Tipe | Keterangan |
-|------|------|------------|
-| `/vendor/font-awesome/css/all.min.css` | External | Ikon Font Awesome |
-| `/fonts/fonts.css` | Local | Custom fonts (Montserrat) |
-| `/assets/main.css` | Build | Tailwind CSS bundle |
-| `<style>` inline | Inline | ~20 baris CSS kustom (responsive) |
-
-### JavaScript (ESM)
-
-| File | Tipe | Fungsi |
-|------|------|--------|
-| `/js/pages/siswa_baru.ts` | Entry point | Chat AI, form, upload, draft (~547 baris) |
-| `/js/upload-guard.ts` | Helper | Validasi file (format + ukuran) |
-| `/js/cloudinary.ts` | Helper | Upload langsung ke Cloudinary (retry + backoff) |
-| `/js/core/bridge.ts` | Core | ESM bridge → window.* aliases |
-| `/pwa.ts` | Core | Service worker + PWA features |
-
-### Backend Actions
-
-| Action | Fungsi | Netlify Function |
-|--------|--------|-----------------|
-| `processSiswaAIChat` | Chat AI untuk pendaftaran siswa (Gemini) | `ai-chat` |
-| `submitDaftarSiswa` | Simpan data pendaftaran + upload files | `ai-form-submit` |
-
-### Database Tables
-
-| Tabel | Operasi | Keterangan |
-|-------|---------|------------|
-| `respon_siswa_baru` | INSERT | Data pendaftaran siswa baru |
-
-### External Services
-
-| Service | Fungsi |
-|---------|--------|
-| Cloudinary | Upload KTP, KK, Ijazah (unsigned, retry 3x) |
-| Google Gemini (via backend) | Chat AI untuk pengisian form |
-
----
-
-## 3. Alur Data
-
-### Page Load
+## 1. Struktur HTML (170 baris)
 
 ```
-1. Browser load siswa-baru.html
-2. Theme init (THEME_INIT_SCRIPT)
-3. Back button rendered (fixed top-left)
-4. Import map injected (Sentry dummy)
-5. Scripts load (type=module):
-   a. upload-guard.js — file validation
-   b. siswa_baru.js — form logic + chat AI
-   c. pwa.js — PWA features
-6. window.onload → initApp():
-   a. Enable manual editing (remove readonly + input listener)
-   b. Show loading skeleton in chatBox
-   c. Check localStorage for saved draft
-   d. If draft exists:
-      - Restore chatHistory + candidateData + uploadedFiles
-      - Check staleness (>24h → warn)
-      - Re-render chat messages
-      - Show file upload status
-   e. If no draft → sendWelcomeMessage()
-   f. Update form UI
-   g. Register resize listener
-```
-
-### Chat Flow
-
-```
-1. User types message in #userInput
-2. Enter key or send button → sendMessage()
-3. Append user message to chat box
-4. Save chat history to localStorage
-5. Show typing indicator
-6. Abort previous chat if still running
-7. Call backend: processSiswaAIChat({history, currentData})
-8. Backend (ai-chat.ts → handleProcessSiswaAIChat):
-   a. System prompt: "Kamu adalah Dede Jeklin..."
-   b. Send history to Gemini AI
-   c. Parse AI response (JSON with reply + data)
-   d. Return { reply, data }
-9. Frontend (with retry: 2 attempts, 2s delay):
-   a. Parse reply (handle nested JSON)
-   b. Append AI message to chat box
-   c. Merge data updates → candidateData
-   d. Update form UI
-   e. Save to localStorage
-```
-
-### Save to DB Flow
-
-```
-1. User clicks "SUBMIT DATA" → saveToDatabase()
-2. Validate: ALL 12 fields must be filled
-   - 9 text fields (nama, ttl, gender, agama, alamat, email, pendidikan, wa_siswa, wa_ortu)
-   - 3 files (ktp, kk, ijazah)
-3. If any missing → show error toast + switch to form tab (mobile)
-4. Upload files to Cloudinary (PARALLEL via Promise.all):
-   - Progress: "Mengunggah dokumen..."
-   - ktp + kk + ijazah → downscaleScanImage → Cloudinary
-5. Progress: "Menyimpan data..."
-6. Call backend (with retry: 2 attempts, 2.5s delay):
-   submitDaftarSiswa({ nama, ttl, gender, ... ktp: url, kk: url, ijazah: url })
-7. Backend (actions-register.ts → handleSubmitDaftarSiswa):
-   a. Validate nama not empty
-   b. Insert into respon_siswa_baru table
-   c. Return success/failure
-8. Frontend:
-   a. If success → clear localStorage draft + show success toast
-   b. If failure → show error toast
+siswa-baru.html (170 baris)
+├── <!DOCTYPE html><html lang="id"> (1-2)
+├── <head> (3-40)
+│   ├── Meta, CSP, PWA manifest, theme-color
+│   ├── <!--HEAD_SHARED_START--> (21-26): Font Awesome, fonts.css, Montserrat preload
+│   ├── <style> (27-39): ~13 baris CSS (scrollbar, fadeIn, responsive)
+│   └── /assets/main.css (40)
+│
+├── <body onload="initApp()" data-page="siswa-baru"> (41)
+│   ├── <!--THEME_INIT_START--> (42-44): Theme loader
+│   ├── Back-to-portal link (46-49): Fixed position
+│   ├── Skip link (52): Targets #formPanel
+│   ├── Mobile tab bar (55-59): Chat/Form tabs (md:hidden)
+│   │
+│   ├── #chatPanel (62-80): AI chat interface
+│   │   ├── Header (63-72): Avatar "Qween Jeklin" + green pulse
+│   │   ├── #chatBox (74): Messages container (aria-live="polite")
+│   │   └── Input bar (76-79): #userInput + #sendBtn
+│   │
+│   ├── <main id="formPanel"> (83-145): Student registration form
+│   │   ├── Header (86-95): Logo + "FORM SISWA BARU ASJ" + SUBMIT
+│   │   ├── #aiTypingStatus (97): Hidden AI typing indicator
+│   │   │
+│   │   ├── Biodata Section (99-114): 2-column grid, 9 fields
+│   │   │   ├── f_nama (full width)
+│   │   │   ├── f_ttl, f_gender, f_agama, f_email
+│   │   │   ├── f_alamat (full width)
+│   │   │   ├── f_pendidikan (full width)
+│   │   │   └── f_wa_siswa, f_wa_ortu
+│   │   │
+│   │   └── Document Uploads (116-142): 3-column grid
+│   │       ├── KTP (.pdf,image/*) → handleDocUpload(event, 'ktp')
+│   │       ├── KK (.pdf,image/*) → handleDocUpload(event, 'kk')
+│   │       └── IJAZAH (.pdf,image/*) → handleDocUpload(event, 'ijazah')
+│   │
+│   ├── <!--SCRIPTS_SHARED_START--> (149-166)
+│   │   ├── Toast container
+│   │   ├── importmap (@sentry/browser → dummy)
+│   │   ├── /js/upload-guard.js
+│   │   ├── /js/pages/siswa_baru.js
+│   │   └── /pwa.js
+│   └── </body></html>
 ```
 
 ---
 
-## 4. State Management
+## 2. Partials (3 marker pairs)
 
-### Module-Level Variables
-
-| Variable | Type | Fungsi |
-|----------|------|--------|
-| `chatHistory` | Array | Riwayat chat [{role, content}] |
-| `candidateData` | Object | Data siswa (9 fields, FLAT structure) |
-| `uploadedFiles` | Object | File uploads {ktp, kk, ijazah} |
-| `DRAFT_KEY` | String | localStorage key: `asj_siswa_draft_v1` |
-| `fieldPaths` | Object | Mapping field ID → data key (9 mappings) |
-| `lastMobileTab` | String | Tab terakhir aktif di mobile |
-| `wasDesktop` | Boolean | Status desktop/mobile saat ini |
-
-### fieldPaths (9 Mappings — FLAT)
-
-```
-f_nama → nama
-f_ttl → ttl
-f_gender → gender
-f_agama → agama
-f_alamat → alamat
-f_email → email
-f_pendidikan → pendidikan
-f_wa_siswa → wa_siswa
-f_wa_ortu → wa_ortu
-```
-
-### localStorage Keys
-
-| Key | Isi |
-|-----|-----|
-| `asj_siswa_draft_v1` | Draft: {chat, data, files, savedAt} |
-| `asj_theme` | Theme preference (dark/SAKURA) |
+| Marker | Lines | Partial File | Isi |
+|--------|-------|-------------|-----|
+| `HEAD_SHARED` | 21-26 | `partials/head-shared.html` | Font Awesome, fonts.css, Montserrat preload |
+| `THEME_INIT` | 42-44 | `partials/theme-init.html` | Theme loader script |
+| `SCRIPTS_SHARED` | 149-166 | `partials/scripts-shared.html` | Toast, importmap, module scripts |
 
 ---
 
-## 5. Backend Flow
+## 3. AI Chat Section (lines 62-80)
 
-### submitDaftarSiswa
+Same pattern as ai_form.html:
+- Header: Jeklin avatar (Supabase CDN) + green pulse
+- `#chatBox`: Messages container
+- `#userInput` + `#sendBtn`
 
-```
-Input: {
-  nama, ttl, gender, agama, alamat, email,
-  pendidikan, wa_siswa, wa_ortu,
-  ktp: string (URL), kk: string (URL), ijazah: string (URL)
-}
-
-Output: {
-  success: boolean,
-  message: string
-}
-
-Processing:
-1. Validate nama not empty
-2. Normalize WA format
-3. Insert into respon_siswa_baru table
-4. Return success/failure
-```
+**Flow:**
+1. `initApp()` checks IndexedDB for draft (`asj_siswa_draft_v1`)
+2. If found → restore chat + form; else → `sendWelcomeMessage()`
+3. User types → Enter/click → `sendMessage()` → `callAPI('processSiswaAIChat', payload)`
+4. API returns `{ reply, data }` → reply appended to chat, data auto-fills form
+5. Auto-save to IndexedDB every 30 seconds
 
 ---
 
-## 6. Build Pipeline
+## 4. Student Registration Form (lines 83-145)
 
-| File | Role |
-|------|------|
-| `siswa-baru.html` | HTML template (130 baris) |
-| `js/pages/siswa_baru.ts` | Entry point (~547 baris) |
-| `js/upload-guard.ts` | File validation (110 baris) |
-| `js/cloudinary.ts` | Cloudinary upload (120 baris) |
-| `js/core/bridge.ts` | ESM bridge (470 baris) |
-| `pwa.ts` | PWA features (350 baris) |
+**All inputs start `readonly`** — removed at runtime by `initApp()`.
 
----
+### Fields (9)
 
-## 7. Key Functions
+| ID | Label | Line | Notes |
+|----|-------|------|-------|
+| `f_nama` | NAMA LENGKAP | 104 | Full width |
+| `f_ttl` | TEMPAT, TANGGAL LAHIR | 105 | |
+| `f_gender` | GENDER | 106 | |
+| `f_agama` | AGAMA | 107 | |
+| `f_email` | EMAIL | 108 | |
+| `f_alamat` | ALAMAT LENGKAP | 109 | Full width |
+| `f_pendidikan` | PENDIDIKAN TERAKHIR | 110 | Full width |
+| `f_wa_siswa` | NO. WA SISWA | 111 | |
+| `f_wa_ortu` | NO. WA ORTU / WALI | 112 | |
 
-| Function | Fungsi |
-|----------|--------|
-| `initApp()` | Entry point: enable editing, restore draft, send welcome |
-| `sendMessage()` | Send chat message to AI backend (with retry + abort) |
-| `saveToDatabase()` | Validate all fields + parallel upload + submit to DB |
-| `updateFormUI()` | Sync form fields with candidateData |
-| `handleDocUpload()` | Handle file upload (downscale if image) |
-| `switchTab()` | Toggle chat/form panels (mobile) |
-| `saveToLocal()` | Save draft to localStorage (with timestamp) |
-| `sendWelcomeMessage()` | Show welcome message in chat |
-| `downscaleScanImage()` | Compress image to 800px JPEG |
-| `withRetry()` | Retry wrapper (max 2 attempts with delay) |
+### File Uploads (3)
 
-## 8. Improvements (10/10 — 2026-08-27)
-
-| # | Improvement | Status | Detail |
-|---|-------------|--------|--------|
-| 1 | withRetry fixed | Fixed | CRITICAL: was returning function, now returns Promise |
-| 2 | Chat history trim | Fixed | Last 20 messages only (prevent Gemini token overflow) |
-| 3 | Auto-save interval | Fixed | 30s interval + on input events |
-| 4 | Parallel uploads | Existing | Promise.all for Cloudinary uploads |
-| 5 | Progress indicator | Existing | "Mengunggah..." + "Menyimpan..." |
-| 6 | Validation | Existing | 12 field checks before submit |
-| 7 | Draft restore | Existing | Auto-load from localStorage |
-| 8 | Draft staleness | Existing | 24h warning on load |
-| 9 | Loading skeleton | Existing | Animated pulse while restoring |
-| 10 | i18n | Existing | ID/JP toggle + all labels translated |
+| Accept | Handler | Status ID | Line |
+|--------|---------|-----------|------|
+| `.pdf,image/*` | `handleDocUpload(event, 'ktp')` | `#status_ktp` | 122 |
+| `.pdf,image/*` | `handleDocUpload(event, 'kk')` | `#status_kk` | 130 |
+| `.pdf,image/*` | `handleDocUpload(event, 'ijazah')` | `#status_ijazah` | 138 |
 
 ---
 
-## 9. E2E Tests
+## 5. i18n
 
-| Test File | Coverage |
-|-----------|----------|
-| `e2e/siswa-baru-test.mjs` | Page load, back button, split view, chat+aria-live, form inputs+aria, uploads, tabs, submit, draft, i18n, PWA, theme |
+| Attribute | Count |
+|-----------|-------|
+| `data-lang` | 0 |
+| `data-lang-aria` | 1 (vestigial) |
+| **Total** | **1** |
 
-Run: `node e2e/siswa-baru-test.mjs` (16 categories, 45+ assertions)
+All UI hardcoded in Bahasa Indonesia. JS uses `window.tr()` for some messages (e.g., `form.siswa_welcome`) but served by shared i18n, not HTML attrs.
+
+---
+
+## 6. External Resources
+
+### Images
+
+| Line | URL | Purpose |
+|------|-----|---------|
+| 66 | `gdwvffmevwtwnzrapjwy.supabase.co/.../jeklin.png` | Chat avatar |
+| 88 | `gdwvffmevwtwnzrapjwy.supabase.co/.../logo_asj.png` | ASJ logo |
+
+### CSS/JS
+
+| File | Purpose |
+|------|---------|
+| `/vendor/font-awesome/css/all.min.css` | Icons |
+| `/fonts/fonts.css` | Custom fonts |
+| `/assets/main.css` | Tailwind bundle |
+| `<style>` inline (13 lines) | Custom page CSS |
+| `/js/pages/siswa_baru.js` | Main logic |
+| `/js/upload-guard.js` | File validation |
+| `/pwa.js` | SW registration |
+
+---
+
+## 7. CSS Approach
+
+- **Minimal inline CSS:** 13 lines (scrollbar, fadeIn animation, responsive mobile overrides)
+- **Tailwind:** Extensive utility classes throughout
+- **Responsive:** `@media (max-width: 767px)` for chatPanel/formPanel/sendBtn
+
+---
+
+## 8. JavaScript
+
+### Entry Point
+`body onload="initApp()"` → `siswa_baru.js` → `registerSeamAliases`
+
+### URL Parameters
+**None.** Unlike sibling pages, siswa-baru reads no URL params.
+
+### Key Functions (from HTML)
+
+| Function | Called From | Purpose |
+|----------|------------|---------|
+| `initApp()` | body onload (41) | Restore drafts, bind listeners, render welcome |
+| `switchTab('chat')` | #btnTabChat (57) | Show chat panel (mobile) |
+| `switchTab('form')` | #btnTabForm (58) | Show form panel (mobile) |
+| `handleEnter(event)` | #userInput onkeypress (77) | Send on Enter |
+| `sendMessage()` | #sendBtn onclick (78) | Send chat message to AI API |
+| `handleDocUpload(event, type)` | 3 file inputs (122,130,138) | Handle file selection |
+| `saveToDatabase()` | #btnSaveDB (94) | Validate + upload + submit |
+
+### IndexedDB Keys
+- `asj_siswa_draft_v1` — chat history + form data + files
+
+---
+
+## 9. Accessibility
+
+### Present
+
+- 12 `aria-label` (portal link, tab buttons, sendBtn, formPanel, 9 form inputs)
+- 4 `aria-live="polite"` (3 file status divs, toast container)
+- Skip link targeting #formPanel
+- All form inputs have visible `<label>` + `aria-label`
+
+### Missing
+
+- No `for` attribute on labels
+- No `role` attributes
+- No `aria-describedby` for error messages
+- No `<noscript>` fallback (page depends entirely on JS)
+
+---
+
+## 10. Issues Found
+
+| # | Severity | Issue | Line |
+|---|----------|-------|------|
+| 1 | 🟡 Medium | **No `<form>` element** — all submission via JS | Global |
+| 2 | 🟢 Low | **Vestigial `data-lang-aria`** — 1 attr on sendBtn, no processor on this page | 78 |
+| 3 | 🟢 Low | **All biodata inputs start `readonly`** — if JS fails, form non-functional | 104-112 |
+| 4 | 🟢 Low | **No `<noscript>` fallback** | - |
+| 5 | 🟢 Low | **Chat panel potential keyboard trap** on mobile | 62-80 |
+
+### Passes
+
+- ✅ Valid HTML5 structure (DOCTYPE, `<html lang>`, head, body)
+- ✅ No duplicate IDs
+- ✅ All tags properly closed
+- ✅ Clean HTML (170 lines, simplest of all pages)
+
+---
+
+## 11. Key Functions Referenced
+
+`initApp`, `switchTab`, `handleEnter`, `sendMessage`, `handleDocUpload`, `saveToDatabase`
