@@ -125,7 +125,8 @@
       <div class="bg-slate-900/40 border border-slate-800 rounded-lg p-3 mb-3 shadow">
         <h2 class="section-title text-sky-400" data-lang="form.ai_identitas"><i class="fas fa-address-card mr-1"></i> 1. Identitas & Kontak</h2>
         <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-          <div class="col-span-2 md:col-span-2"><label class="label-micro" data-lang="form.ai_nama">Nama Lengkap</label><input type="text" id="f_nama" class="input-micro" readonly></div>
+<div class="col-span-2 md:col-span-2"><label class="label-micro" for="f_nama" 
+data-lang="form.ai_nama">Nama Lengkap</label><input type="text" id="f_nama" class="input-micro" readonly></div>
           <div class="col-span-2 md:col-span-2"><label class="label-micro" data-lang="form.ai_katakana">Katakana</label><input type="text" id="f_katakana" class="input-micro text-pink-300 font-bold" readonly></div>
           <div><label class="label-micro" data-lang="form.ai_panggilan">Panggilan</label><input type="text" id="f_panggilan" class="input-micro" readonly></div>
           <div><label class="label-micro" data-lang="form.ai_p_katakana">P. Katakana</label><input type="text" id="f_panggilan_katakana" class="input-micro text-pink-300 font-bold" readonly></div>
@@ -137,11 +138,15 @@
           <div><label class="label-micro" data-lang="form.ai_goldar">Gol. Darah</label><input type="text" id="f_goldar" class="input-micro text-center" readonly></div>
           <div><label class="label-micro" data-lang="form.ai_status">Status Nikah</label><input type="text" id="f_status" class="input-micro text-center" readonly></div>
           <div><label class="label-micro" data-lang="form.ai_anak">Anak</label><input type="text" id="f_anak" class="input-micro text-center" readonly></div>
-          <div class="col-span-2"><label class="label-micro" data-lang="form.ai_email">Email</label><input type="text" id="f_email" class="input-micro" readonly></div>
+<div class="col-span-2"><label class="label-micro" for="f_email" 
+data-lang="form.ai_email">Email</label><input type="text" id="f_email" class="input-micro" readonly></div>
           <div class="col-span-2 md:col-span-3"><label class="label-micro" data-lang="form.ai_alamat">Alamat Lengkap</label><input type="text" id="f_alamat" class="input-micro" readonly></div>
-          <div><label class="label-micro" data-lang="form.ai_hp">No. HP (WA)</label><input type="text" id="f_hp" class="input-micro" readonly></div>
+<div><label class="label-micro" for="f_hp" 
+data-lang="form.ai_hp">No. HP (WA)</label><input 
+type="text" id="f_hp" class="input-micro" readonly></div>
           <div><label class="label-micro" data-lang="form.ai_hp_darurat">HP Darurat</label><input type="text" id="f_hpdarurat" class="input-micro" readonly></div>
-          <div class="col-span-2 md:col-span-2"><label class="label-micro" data-lang="form.ai_ktp">NIK KTP</label><input type="text" id="f_ktp" class="input-micro" readonly></div>
+<div class="col-span-2 md:col-span-2"><label class="label-micro" for="f_ktp" 
+data-lang="form.ai_ktp">NIK KTP</label><input type="text" id="f_ktp" class="input-micro" readonly></div>
           <div class="col-span-2 md:col-span-2"><label class="label-micro" data-lang="form.ai_paspor">No. Paspor</label><div class="flex gap-1"><select id="f_paspor_status" class="input-micro" style="width:38%" readonly><option value="">—</option><option value="ADA">ADA (有)</option><option value="TIDAK ADA">TIDAK ADA (無)</option></select><input type="text" id="f_paspor" class="input-micro" style="width:62%" readonly placeholder="Nomor paspor…"></div></div>
           <div><label class="label-micro" data-lang="form.ai_sim">SIM</label><div class="flex gap-1"><select id="f_sim_status" class="input-micro" style="width:42%" readonly><option value="">—</option><option value="ADA">ADA (有)</option><option value="TIDAK ADA">TIDAK ADA (無)</option></select><input type="text" id="f_sim" class="input-micro" style="width:58%" readonly placeholder="Nomor SIM…"></div></div>
         </div>
