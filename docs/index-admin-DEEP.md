@@ -300,3 +300,41 @@ Lines 1019-1157 contain 15+ comment placeholders for modals whose HTML lives in 
 ## 12. Key Functions Referenced in HTML
 
 `changePage`, `setLanguage`, `toggleMobileMenu`, `toggleFormLanguage`, `cobaInstallApp`, `bukaModalKandidat`, `showLoginAdminMaster`, `adminSwitchTab`, `bukaAdminAiCopilot`, `submitFormAdmin`, `submitJadwal`, `submitWaTemplate`, `filterKelolaLoker`, `filterDbJob`, `filterCbx`, `filterKandidat`, `cekUploadFile`, `mailSelectAll`, `bukaDigitalCV`, `bukaModalPemberkasan`, `bukaModalTambahKandidat`, `bukaModalGantiPass`, `bukaSimulatorInterview`, `bukaModalTtd`, `bukaMasterEksternal`, `bukaMasterLengkapPortal`, `bukaPreviewCV`, `bukaModalUndanganKelas`, `window.toggleAdminSidebar`, `mulaiKirimUndanganGrup`, `simpanCatatanCv`, `simpanSuperEditKandidat`, `downloadBiodataLengkap`, `formatInputWA`
+
+---
+
+## 13. admin.html — Specifics (1225 baris)
+
+> admin.html = index.html + `IS_ADMIN_PORTAL` flag + eager XLSX load.
+> 95%+ konten identik. Bagian ini fokus pada perbedaan.
+
+### 13.1 Perbedaan dari index.html
+
+| Aspek | admin.html | index.html |
+|-------|-----------|------------|
+| Lines | 1225 | 1219 (+6) |
+| Flag | `window.IS_ADMIN_PORTAL = true` (line 42) | — |
+| XLSX loading | **Eager** (line 1183): `<script src="/vendor/xlsx.full.min.js">` | Lazy via `muatVendorLib()` |
+| Hamburger class | Tanpa `shadow-lg` (line 76) | Ada `shadow-lg` |
+| Comment di script | Lines 1175-1182: penjelasan eager XLSX load | Tidak ada |
+
+### 13.2 Trigger Perbedaan Runtime
+
+`IS_ADMIN_PORTAL = true` dibaca oleh bundle JS untuk:
+- Eager load xlsx.full.min.js (untuk admin preview workflow)
+- Routing default ke admin view
+- Behavior differences di beberapa admin operations
+
+### 13.3 admin.html Specific Scripts
+
+| Line | Script | Purpose |
+|------|--------|---------|
+| 42 | `<script>window.IS_ADMIN_PORTAL = true;</script>` | Admin flag |
+| 1183 | `/vendor/xlsx.full.min.js?v=7f749f81a4` | Excel preview (eager) |
+
+### 13.4 admin.html Issues
+
+| Issue | Location | Detail |
+|-------|----------|--------|
+| `pamfletModal` tanpa `role="dialog"` | Line 1055 | Shared modals punya `role="dialog" aria-modal="true"`, tapi pamfletModal tidak |
+| Missing `rel="noopener"` | Lines 306, 347, 380, 397 | External links (WA, Maps) open in new tab tanpa `rel="noopener noreferrer"` |
