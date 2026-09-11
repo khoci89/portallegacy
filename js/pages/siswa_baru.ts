@@ -395,6 +395,24 @@ export async function saveToDatabase() {
     return;
   }
 
+  // === VALIDASI FORMAT WA ===
+  var waClean = String(candidateData.wa_siswa || '').replace(/\D/g, '');
+  if (!/^62\d{10,13}$/.test(waClean)) {
+    window.showToast('Nomor WA Siswa harus 62xxxxxxxxxx (12-15 digit).', 'error');
+    return;
+  }
+  var ortuClean = String(candidateData.wa_ortu || '').replace(/\D/g, '');
+  if (!/^62\d{10,13}$/.test(ortuClean)) {
+    window.showToast('Nomor WA Orang Tua harus 62xxxxxxxxxx (12-15 digit).', 'error');
+    return;
+  }
+
+  // === VALIDASI FORMAT EMAIL ===
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(candidateData.email || '')) {
+    window.showToast('Email harus valid.', 'error');
+    return;
+  }
+
   var btn = $('btnSaveDB');
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + window.tr('form.siswa_sending') + '…';

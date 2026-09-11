@@ -17,6 +17,7 @@ import { base64ToBlob, downscaleScanImage } from '../core/file.ts';
 import '../init/util.ts';
 import { uploadToCloudinary } from '../cloudinary.ts';
 import { idbGet, idbSet, idbRemove } from '../core/idb.ts';
+import { appendHTML as _appendHTML, sendMessage as _sendMessage, type ChatDeps } from './ai-chat.ts';
 
 // FASE 3/4: dulu diisi server (GAS scriptlet) saat halaman dibuka dari
 // Portal ASJ. Sekarang dibaca dari query string URL (?flow=&job=&bidang=&wa=&nama=)
@@ -419,6 +420,20 @@ function mergeCandidateData(current, incoming) {
   )
     return current === undefined ? '' : current;
   return incoming;
+}
+
+function getChatDeps(): ChatDeps {
+  return {
+    $: $,
+    chatHistory: chatHistory,
+    latestCandidateData: latestCandidateData,
+    currentPhotoBase64: currentPhotoBase64,
+    urlJeklin: urlJeklin,
+    formContext: formContext as { flow: string },
+    saveToLocal: saveToLocal,
+    mergeCandidateData: mergeCandidateData,
+    updateFormUI: updateFormUI,
+  };
 }
 
 function enableManualPreview() {
@@ -1078,145 +1093,12 @@ export function handleEnter(e) {
   }
 }
 
-function appendHTML(sender, text) {
-  var isUser = sender === 'user';
-  var cleanText = escapeHtml(text).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-
-  // --- LOGIKA BARU: CEK FOTO KANDIDAT ---
-  var userIcon = '<i class="fas fa-user"></i>'; // Icon default (jika belum ada foto)
-
-  // Jika kandidat baru saja upload foto di sesi ini
-  if (typeof currentPhotoBase64 !== 'undefined' && currentPhotoBase64) {
-    userIcon =
-      '<img src="data:image/jpeg;base64,' +
-      currentPhotoBase64 +
-      '" alt="" class="w-full h-full object-cover" onerror="this.outerHTML=\'<i class=&quot;fas fa-user&quot;></i>\'">';
-  }
-  // Jika kandidat sudah punya foto lama dari database
-  else {
-    var imgPreview = document.getElementById('previewFoto');
-    if (
-      imgPreview &&
-      imgPreview.src &&
-      imgPreview.src.length > 20 &&
-      !imgPreview.classList.contains('hidden')
-    ) {
-      userIcon =
-        '<img src="' +
-        imgPreview.src +
-        '" alt="" class="w-full h-full object-cover" onerror="this.outerHTML=\'<i class=&quot;fas fa-user&quot;></i>\'">';
-    }
-  }
-  // --------------------------------------
-
-  var aiIcon =
-    '<img src="' + urlJeklin + '" alt="" class="w-full h-full object-cover rounded-full">';
-
-  // Perhatikan tambahan class 'overflow-hidden' agar fotonya menjadi bulat sempurna
-  var htmlStr =
-    '<div class="flex gap-2 ' +
-    (isUser ? 'flex-row-reverse' : '') +
-    ' fade-in">' +
-    '<div class="w-8 h-8 rounded-full overflow-hidden ' +
-    (isUser ? 'bg-sky-500' : 'bg-amber-500 p-0.5') +
-    ' flex-shrink-0 flex items-center justify-center text-xs text-white shadow">' +
-    (isUser ? userIcon : aiIcon) +
-    '</div>' +
-    '<div class="bg-slate-800 p-2.5 rounded-xl ' +
-    (isUser
-      ? 'rounded-tr-none text-sky-100 bg-sky-900/40 border border-sky-800'
-      : 'rounded-tl-none text-slate-200 border border-slate-700') +
-    ' text-[11px] md:text-xs max-w-[85%] shadow leading-relaxed whitespace-pre-wrap">' +
-    cleanText +
-    '</div>' +
-    '</div>';
-
-  $('chatBox').insertAdjacentHTML('beforeend', htmlStr);
-  setTimeout(function () {
-    $('chatBox').scrollTop = $('chatBox').scrollHeight;
-  }, 100);
+function appendHTML(sender: string, text: string) {
+  _appendHTML(sender, text, getChatDeps());
 }
 
-export function sendMessage() {
-  var inputEl = $('userInput'),
-    btnEl = $('sendBtn');
-  var text = inputEl.value.trim();
-  if (!text) return;
-
-  appendHTML('user', text);
-  inputEl.value = '';
-  chatHistory.push({ role: 'user', content: text });
-  saveToLocal();
-
-  inputEl.disabled = true;
-  btnEl.disabled = true;
-
-  // PERBAIKAN: Ubah teks loading saat chat dikirim agar tidak "tersangkut" teks lama
-  $('aiTypingStatus').innerHTML =
-    '<i class="fas fa-magic fa-spin mr-2"></i> ' + window.tr('form.ai_chat_typing');
-  $('aiTypingStatus').classList.remove('hidden');
-
-  // FIX: Trim history to last 20 messages to avoid Gemini token limit
-  var trimmedHistory = chatHistory.slice(-20);
-  var payloadToAI = {
-    flow: formContext.flow,
-    history: trimmedHistory,
-    currentData: latestCandidateData,
-    lang: typeof window.CURRENT_LANG !== 'undefined' ? window.CURRENT_LANG : 'id',
-  };
-
-  withRetry(function() {
-      return window.callAPI('processAIChat', payloadToAI);
-    }, 2, 2000)
-    .then(function (res) {
-      inputEl.disabled = false;
-      btnEl.disabled = false;
-      inputEl.focus();
-      $('aiTypingStatus').classList.add('hidden');
-
-      // Lock VIP di-enforce SERVER (AGENTS.md §6) — kalau action dipanggil
-      // langsung tanpa sesi admin & kandidat non-VIP, tampilkan pesan lock.
-      if (res.success === false) {
-        appendHTML('ai', res.error || window.tr('ui.toast_ai_cv_locked'));
-        return;
-      }
-
-      if (res.reply) {
-        var finalReply = res.reply;
-        if (typeof res.reply === 'string' && res.reply.startsWith('{')) {
-          try {
-            var p = JSON.parse(res.reply.replace(/\n/g, '\\n'));
-            if (p.reply) {
-              finalReply = p.reply;
-            }
-            if (p.data) {
-              res.data = Object.assign({}, res.data, p.data);
-            }
-          } catch (e) {
-            var match = res.reply.match(/"reply"\s*:\s*"([^]*?)"\s*,/);
-            if (match && match[1]) {
-              finalReply = match[1];
-            }
-          }
-        }
-        appendHTML('ai', finalReply);
-        chatHistory.push({
-          role: 'assistant',
-          content: typeof res === 'string' ? res : JSON.stringify(res),
-        });
-      }
-      if (res.data) {
-        latestCandidateData = mergeCandidateData(latestCandidateData, res.data);
-        updateFormUI();
-      }
-      saveToLocal();
-    })
-    .catch(function (err) {
-      inputEl.disabled = false;
-      btnEl.disabled = false;
-      $('aiTypingStatus').classList.add('hidden');
-      appendHTML('ai', window.tr('form.ai_chat_error'));
-    });
+function sendMessage() {
+  _sendMessage(getChatDeps());
 }
 
 function setValue(id, val) {
