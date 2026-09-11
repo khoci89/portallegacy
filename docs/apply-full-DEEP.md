@@ -1,204 +1,282 @@
 # apply-full.html — Deep Analysis
 
-> Halaman form lamaran loker 3 langkah. Dianalisis sampai akar pada 2026-08-27.
+> Deep scan: 2026-09-11. Standalone page (type="module") — 3-step job application form.
+> Entry point: `js/pages/apply_full.ts` → `js/pages/apply_full.js`
 
-## 1. Arsitektur Halaman
-
-```
-apply-full.html (365 baris)
-├── <head> — Meta, CSS inline, shared partials
-├── <body> — Form wizard 3 langkah
-│   ├── HERO SECTION — Logo + background
-│   ├── STEP 1: Data Diri — Form input
-│   ├── STEP 2: Upload Dokumen — File upload cards
-│   ├── STEP 3: Konfirmasi — Checkbox + submit
-│   └── STICKY NAV — Prev/Next/Submit buttons
-├── MODALS — Loading + Success
-└── SCRIPTS — ESM modules
-```
-
-## 2. Dependensi Lengkap
-
-### 2.1 CSS
-
-| File | Tipe | Keterangan |
-|------|------|------------|
-| `/vendor/font-awesome/css/all.min.css` | External | Ikon Font Awesome |
-| `/fonts/fonts.css` | Local | Custom fonts (Montserrat) |
-| `/assets/main.css` | Build | Tailwind CSS bundle |
-| `<style>` inline | Inline | ~120 baris CSS kustom |
-
-### 2.2 JavaScript (ESM)
-
-| File | Tipe | Fungsi |
-|------|------|--------|
-| `/js/pages/apply_full.ts` | Entry point | Form wizard, validation, submit |
-| `/js/apply-docs.ts` | Helper | Model dokumen (apa saja yang perlu di-upload) |
-| `/js/upload-guard.ts` | Helper | Validasi file (format + ukuran) |
-| `/js/cloudinary.ts` | Helper | Upload langsung ke Cloudinary |
-| `/js/core/bridge.ts` | Core | ESM bridge → window.* aliases |
-| `/pwa.ts` | Core | Service worker + PWA features |
-
-### 2.3 Backend Actions
-
-| Action | Fungsi | Endpoint |
-|--------|--------|----------|
-| `cekDataPelamar` | Cek riwayat lamaran | `candidates` |
-| `submitApply` | Submit lamaran | `apply` |
-
-### 2.4 Database Tables
-
-| Tabel | Operasi | Keterangan |
-|-------|---------|------------|
-| `database_asj_form` | INSERT/UPDATE | Lamaran (1 kandidat × code_job) |
-| `database_candidate` | PATCH | Sync photo/JFT/SSW/CV |
-| `master_database_candidate` | PATCH | Carry-over dokumen TSK |
-
----
-
-## 3. Alur Data (Flow)
-
-### 3.1 Page Load
+## 1. Struktur HTML (371 baris)
 
 ```
-1. Browser load apply-full.html
-2. Theme init (THEME_INIT_SCRIPT)
-3. Back button rendered (fixed top-left)
-4. Skip link for accessibility
-5. Hero section renders
-6. Form wizard renders (Step 1 active)
-7. Scripts load:
-   a. apply-docs.js — load document model
-   b. upload-guard.js — load file validation
-   c. apply_full.js — load form logic
-   d. pwa.js — load PWA features
-8. window.onload fires:
-   a. Read URL params (?job=&bidang=&wa=&nama=&req=)
-   b. Apply document plan from req param
-   c. Show/hide upload cards based on plan
-   d. If WA exists (from portal), auto-fill + lock fields
-   e. Call cekRiwayat() to check existing data
-```
-
-### 3.2 Form Submission
-
-```
-1. User fills Step 1 (Data Diri)
-2. User clicks "Lanjut" → validateStep1()
-3. User fills Step 2 (Upload Dokumen)
-4. User clicks "Lanjut" → validateStep2()
-5. User checks agreement checkbox
-6. User clicks "KIRIM LAMARAN" → submitApply()
-7. submitApply():
-   a. Validate agreement checkbox
-   b. Validate file extensions
-   c. Show loading modal
-   d. Upload files to Cloudinary (if new)
-   e. Call backend: submitApply([payload])
-   f. Backend:
-      - Normalize WA
-      - Validate job exists
-      - Check document completeness
-      - Insert/Update database_asj_form
-      - Sync to database_candidate
-      - Carry-over to master_database_candidate
-      - Send push notification to admin
-   g. Show success modal
+apply-full.html (371 baris)
+├── <head> (1-125)
+│   ├── Meta, CSP, PWA manifest
+│   ├── <!--HEAD_SHARED_START--> (18-23): Font Awesome, fonts.css, Montserrat preload
+│   ├── <style> (25-124): ~200 baris CSS kustom (hero, glass, stepper, forms, modals)
+│   └── /assets/main.css (125)
+│
+├── <body data-page="apply-full"> (126-370)
+│   ├── <!--THEME_INIT_START--> (127-129): Theme loader
+│   ├── Back-to-portal link (130-134): Fixed position, aria-label
+│   ├── Skip link (135-136): WCAG 2.4.1
+│   ├── Hero section (138-147): Background image + logo + title
+│   │
+│   ├── <main id="main-content"> (149-321)
+│   │   └── .glass card (150-320)
+│   │       ├── Stepper wizard (152-169): 3 indicators + progress line
+│   │       │
+│   │       ├── STEP 1: Data Diri (171-242)
+│   │       │   ├── Hidden: #job, #bidang (readonly)
+│   │       │   ├── #wa (tel, onblur: formatInputWA + cekRiwayat)
+│   │       │   ├── #nama (text, auto-kapital)
+│   │       │   ├── #email (email)
+│   │       │   ├── #gender (select: LAKI-LAKI/PEREMPUAN)
+│   │       │   ├── #usia (number)
+│   │       │   ├── #tb (number, cm)
+│   │       │   └── #bb (number, kg)
+│   │       │
+│   │       ├── STEP 2: Upload Dokumen (244-305)
+│   │       │   ├── #photo (.jpg/.jpeg/.png, max 2MB) — always visible
+│   │       │   ├── #cv (.pdf/.xls/.xlsx/.doc/.docx, max 2MB) — hidden by default
+│   │       │   ├── #jft (.pdf, max 2MB) — hidden by default
+│   │       │   ├── #ssw (.pdf, max 2MB) — hidden by default
+│   │       │   └── #dynamic-cards — JS-generated extras
+│   │       │
+│   │       └── STEP 3: Konfirmasi (307-318)
+│   │           ├── #agree (checkbox) — required
+│   │           └── Info cards (PROSES CEPAT, DATA AMAN, ASJ JAPAN)
+│   │
+│   ├── Sticky bottom nav (323-328): #btnPrev, #btnNext, #btnSubmit
+│   ├── Loading modal (330-337)
+│   ├── Success modal (338-345): return to portal button
+│   ├── Toast container (355)
+│   │
+│   └── <!--SCRIPTS_SHARED_START--> (350-369)
+│       ├── Import map
+│       ├── /js/core/sentry-dummy.js
+│       ├── /js/apply-docs.js (document plan logic)
+│       ├── /js/upload-guard.js (file validation)
+│       ├── /js/pages/apply_full.js (main logic)
+│       └── /pwa.js (SW registration)
 ```
 
 ---
 
-```html
-<!-- BACK TO PORTAL -->
-<a href="/" class="fixed top-4 left-4 z-[100] flex items-center gap-2 px-4 py-2 bg-black/70 hover:bg-black/90 text-white text-xs font-bold rounded-full border border-white/20 backdrop-blur-sm transition-all shadow-lg hover:scale-105" aria-label="Kembali ke Portal">
-  <i class="fas fa-arrow-left"></i>
-  <span class="hidden sm:inline">Portal</span>
-</a>
+## 2. Partials (3 marker pairs)
+
+| Marker | Lines | Partial File | Isi |
+|--------|-------|-------------|-----|
+| `HEAD_SHARED` | 18-23 | `partials/head-shared.html` | Font Awesome, fonts.css, Montserrat preload |
+| `THEME_INIT` | 127-129 | `partials/theme-init.html` | Theme loader script |
+| `SCRIPTS_SHARED` | 350-369 | `partials/scripts-shared.html` | Import map + 4 module scripts |
+
+---
+
+## 3. Forms & Inputs
+
+### Step 1: Data Diri (lines 171-242)
+
+| ID | Label | Type | Line | Notes |
+|----|-------|------|------|-------|
+| `job` | Nomer Job ASJ | text (hidden) | 176 | `readonly`, auto-filled from URL |
+| `bidang` | Bidang Pekerjaan | text (hidden) | 182 | `readonly`, auto-filled from URL |
+| `wa` | Nomor WhatsApp | tel | 190 | `onblur`: formatInputWA + cekRiwayat |
+| `nama` | Nama Lengkap | text | 200 | Auto-kapital, placeholder "Sesuai KTP/Paspor" |
+| `email` | Alamat Email Aktif | email | 208 | |
+| `gender` | Gender | select | 216 | Options: LAKI-LAKI / PEREMPUAN |
+| `usia` | Usia | number | 224 | inputmode="numeric" |
+| `tb` | Tinggi Badan | number | 232 | placeholder "cm" |
+| `bb` | Berat Badan | number | 238 | placeholder "kg" |
+
+### Step 2: Upload Dokumen (lines 244-305)
+
+| ID | Label | Accept | Max | Line | Default |
+|----|-------|--------|-----|------|---------|
+| `photo` | Pas Photo | .jpg,.jpeg,.png | 2MB | 255 | Visible |
+| `cv` | CV ASJ | .pdf,.xls,.xlsx,.doc/.docx | 2MB | 270 | Hidden |
+| `jft` | JFT Certificate | .pdf | 2MB | 284 | Hidden |
+| `ssw` | SSW Certificate | .pdf | 2MB | 298 | Hidden |
+| dynamic | Via `#dynamic-cards` | .pdf,image/* | 2MB | 304 | JS-generated |
+
+**Visibility logic:** `applyDocsPlan(reqStr)` parses `req` URL param (default `"CV,JFT,SSW"`) to show/hide cards. Non-standard items go to `#dynamic-cards`.
+
+### Step 3: Konfirmasi (lines 307-318)
+
+| ID | Type | Line | Purpose |
+|----|------|------|---------|
+| `agree` | checkbox | 310 | Declaration — required for submit |
+
+**Validation:** No HTML5 `required` attributes. All validation via JS module.
+
+---
+
+## 4. Inline Event Handlers
+
+### onclick (8 handlers)
+
+| Line | Element | Handler |
+|------|---------|---------|
+| 253 | Photo upload button | `photo.click()` |
+| 268 | CV upload button | `cv.click()` |
+| 282 | JFT upload button | `jft.click()` |
+| 296 | SSW upload button | `ssw.click()` |
+| 325 | #btnPrev | `changeStep(-1)` |
+| 326 | #btnNext | `changeStep(1)` |
+| 327 | #btnSubmit | `submitApply()` |
+| 343 | Success return button | `window.top.location.href='/index.html'` |
+
+### onblur (1 handler)
+
+| Line | Element | Handler |
+|------|---------|---------|
+| 190 | #wa | `formatInputWA(this); cekRiwayat();` |
+
+---
+
+## 5. Step Flow
+
+```
+Step 1 (Data Diri)  →[Lanjut]→  Step 2 (Dokumen)  →[Lanjut]→  Step 3 (Kirim)
+                         ↑                                    │
+                         └──────────[Kembali]─────────────────┘
 ```
 
-**Posisi**: Fixed top-left, z-index 100
-**Responsif**: Icon saja di mobile, icon + teks di desktop
-**Aksesibilitas**: aria-label untuk screen reader
+- `f` = current step (JS variable, init 1)
+- `.step-content` toggled via `.active` class
+- `#btnPrev` hidden on step 1
+- `#btnNext` hidden on step 3
+- `#btnSubmit` shown only on step 3
+- `#progress-line` width transitions between steps
 
 ---
 
-## 4. Backend Flow Detail
+## 6. i18n
 
-### 6.1 submitApply Action
+**0 `data-lang` attributes.** All UI text hardcoded in Bahasa Indonesia. No i18n support.
 
+---
+
+## 7. External Resources
+
+### Images
+
+| Line | URL | Purpose |
+|------|-----|---------|
+| 140 | `images.unsplash.com/photo-1493976040374-85c8e12f0c0e` | Hero background |
+| 143 | `gdwvffmevwtwnzrapjwy.supabase.co/.../logo_apply.png` | Logo |
+
+### CSS/JS
+
+| File | Purpose |
+|------|---------|
+| `/vendor/font-awesome/css/all.min.css` | Icons |
+| `/fonts/fonts.css` | Custom fonts |
+| `/assets/main.css` | Tailwind utilities |
+| `<style>` inline (200 lines) | Custom page CSS |
+| `/js/pages/apply_full.js` | Main logic |
+| `/js/apply-docs.js` | Document plan |
+| `/js/upload-guard.js` | File validation |
+| `/pwa.js` | SW registration |
+
+---
+
+## 8. CSS Approach
+
+- **Hybrid:** 200 lines inline `<style>` + Tailwind utilities from `main.css`
+- **Dark theme:** `#020617` bg, `#ec4899` pink accent, glassmorphism
+- **Animations:** `fadeIn` (step transitions), `spin` (loading spinner)
+- **Inline styles** on lines 334, 340 (should be classes)
+
+---
+
+## 9. URL Parameters
+
+| Param | Default | Field | Purpose |
+|-------|---------|-------|---------|
+| `job` | `""` | `#job` | Job code |
+| `bidang` | `""` | `#bidang` | Job category |
+| `wa` | `""` | `#wa` | WhatsApp (auto-normalized to 628xx) |
+| `nama` | `""` | `#nama` | Applicant name |
+| `req` | `"CV,JFT,SSW"` | `window.dynamicReqStr` | Required documents |
+
+**Example:** `apply-full.html?job=JOB-001&bidang=Pertanian&wa=08123456789&nama=Budi&req=CV,JFT,SSW,KTP`
+
+---
+
+## 10. JavaScript
+
+### Module Chain
 ```
-Input: payload[0] = {
-  job: string (code_job),
-  bidang: string,
-  nama: string,
-  wa: string,
-  email: string,
-  gender: string,
-  usia: string,
-  tb: string,
-  bb: string,
-  photoFile: string (URL),
-  oldPhoto: string,
-  cvFile: string (URL),
-  jftFile: string (URL),
-  oldJft: string,
-  sswFile: string (URL),
-  oldSsw: string,
-  extraFiles: [{name, url}]
-}
-
-Output: {
-  success: boolean,
-  message: string
-}
-
-Processing:
-1. Normalize WA (628xxx format)
-2. Validate job exists in database
-3. Check document completeness vs dokumen_share
-4. Upsert to database_asj_form (dedup per WA+job)
-5. Sync photo/JFT/SSW/CV to database_candidate
-6. Carry-over extra files to master_database_candidate
-7. Send push notification to admin
-8. Return success/failure
+apply_full.js  →  js/core/bridge.js (registerSeamAliases)
+apply-docs.js  →  js/core/bridge.js
+upload-guard.js →  js/core/bridge.js
 ```
 
----
+### Key Functions (exported via seam aliases)
 
-| Test File | Coverage |
-|-----------|----------|
-| `scripts/__tests__/apply-docs.test.js` | applyDocsPlan function |
+| Function | Purpose | Called From |
+|----------|---------|------------|
+| `formatInputWA(el)` | Normalize WA format (add 62 prefix) | `onblur` #wa |
+| `cekRiwayat()` | Check prev application, auto-fill | `onblur` #wa |
+| `changeStep(delta)` | Navigate wizard ±1 | btnPrev/btnNext |
+| `submitApply()` | Submit form + files via API | btnSubmit |
+| `handleExtraFile(input, idx)` | Handle dynamic file uploads | Dynamic onchange |
 
-| Test File | Coverage |
-|-----------|----------|
-| `e2e/upload-check.mjs` | Upload flow |
-| `e2e/biodata-check.mjs` | Biodata sync |
+### Internal Functions
 
----
-
-- **CSS**: ~120 baris inline + Tailwind bundle
-- **JS load**: 4 module scripts (parallel)
-- **Upload**: Direct to Cloudinary (no backend processing)
-- **Cache**: SW caches page for offline access
-
----
-
-- **Backend validation**: Document completeness check
-- **WA normalization**: Prevents duplicate candidates
-- **No auth required**: Public form (anyone can apply)
-- **Rate limiting**: Not implemented on submitApply
+| Function | Purpose |
+|----------|---------|
+| `escapeHtml(str)` | XSS-safe escaping |
+| `openDB/readDraft/writeDraft/deleteDraft` | IndexedDB draft persistence |
+| `saveDraft()/restoreDraft()` | Draft save/restore |
+| `applyDocsPlan(reqStr)` | Show/hide upload cards |
 
 ---
 
-2. **Add error boundary**: Catch and display errors gracefully
-3. **Add abort controller**: Allow users to cancel uploads
-4. **Add save draft**: Save form to localStorage
-5. **Add rate limiting**: Prevent spam submissions
+## 11. Accessibility
 
-## 5. E2E Tests
+### ARIA (18 attributes)
 
-| Test File | Coverage |
-|-----------|----------|
-| `e2e/apply-full-test.mjs` | Page load, back button, form inputs+aria, URL auto-fill, stepper, toast, draft, file upload, i18n, PWA, modals, aria-live |
+- All form inputs have `aria-label` + visible `<label>` (good redundancy)
+- `#wa-msg`, `#wa-warn`, toast container have `aria-live="polite"`
+- Back-to-portal link has `aria-label="Kembali ke Portal"`
+- `<main>` has `tabindex="-1"` (skip link target)
 
-Run: `node e2e/apply-full-test.mjs` (14 categories, 40+ assertions)
+### Missing
+
+- No `role="progressbar"` on stepper
+- No `aria-describedby` linking tip text to inputs
+- No `role="dialog"` on loading/success modals
+- No focus trapping in modals
+
+---
+
+## 12. Issues Found
+
+### Structural
+
+| # | Line | Issue | Severity |
+|---|------|-------|----------|
+| 1 | 1 | **Missing `<!DOCTYPE html>` and `<html lang>`** — file starts with `<head>` directly | 🔴 High |
+| 2 | 321 | **Missing `</main>`** — `<main>` opened at 149, never explicitly closed | 🟡 Medium |
+| 3 | 334,340 | **Inline `style=` attributes** — should be CSS classes | 🟢 Low |
+
+### Semantic
+
+| # | Line | Issue |
+|---|------|-------|
+| 1 | 153-169 | Stepper lacks `role="progressbar"` + `aria-valuenow` |
+| 2 | 330,338 | Loading/success modals lack `role="dialog"` + `aria-modal` |
+| 3 | 202 | Tip text not linked to input via `aria-describedby` |
+
+### Accessibility
+
+| # | Issue |
+|---|-------|
+| 1 | No `for` attribute on `<label>` elements (relies on DOM proximity) |
+| 2 | No focus management on step change |
+| 3 | No error announcement for validation failures |
+
+---
+
+## 13. Key Functions Referenced
+
+`formatInputWA`, `cekRiwayat`, `changeStep`, `submitApply`, `handleExtraFile`, `photo.click()`, `cv.click()`, `jft.click()`, `ssw.click()`, `window.top.location.href`
