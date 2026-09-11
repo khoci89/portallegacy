@@ -87,7 +87,7 @@ function saveToLocal() {
   }
 }
 
-export async function initApp() {
+export async function siswaBaruInitApp() {
   // Izinkan form diedit manual jika malas chat
   Object.keys(fieldPaths).forEach(function (id) {
     const el = $(id);
@@ -477,7 +477,7 @@ export async function saveToDatabase() {
 registerSeamAliases({
   $,
   switchTab,
-  initApp,
+  initApp: siswaBaruInitApp,
   handleEnter,
   sendMessage,
   handleDocUpload,

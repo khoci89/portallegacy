@@ -268,6 +268,10 @@ export async function prosesLoginPersonal() {
     window.isAdmin = true;
     window.currentAdminName = name;
     document.getElementById('nav-mode').classList.add('hidden');
+    if (!window.IS_ADMIN_PORTAL) {
+      window.location.href = '/admin.html';
+      return;
+    }
     document.getElementById('nav-admin-mode').classList.remove('hidden');
 
     const mLoggedOut = document.getElementById('mobile-nav-logged-out');

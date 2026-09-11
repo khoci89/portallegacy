@@ -746,7 +746,7 @@ function applyPortalContext() {
 // SYNC with backend: netlify/functions/_lib/ai/chat.ts isVipCatatan()
 // Old regex /\[(?:KELAS\s*[A-Z0-9]+|[A-Z0-9]+)\]/i matched ANY bracketed
 // tag ([MCU], [VISA], [NOTE]) — too broad. Tightened to [VIP] + [KELAS ...] only.
-function isVipCatatan(catatan) {
+function isAiVipCatatan(catatan) {
   const c = catatan || '';
   return c.includes('[VIP]') || /\[KELAS\s*[A-Z0-9]+\]/i.test(c);
 }
@@ -793,7 +793,7 @@ function verifikasiAksesAiCv(targetWa) {
       const cand = res && Array.isArray(res.candidates) ? res.candidates[0] : null;
       let catatan = cand ? String(cand.catatanInt || cand.catatan || '') : '';
       if (!catatan && res && res.myData) catatan = String(res.myData.catatanInt || '');
-      return isVipCatatan(catatan);
+      return isAiVipCatatan(catatan);
     })
     .catch(function () {
       // Kalau gagal jaringan, jangan blokir (fallback aman: biarkan masuk)
@@ -854,7 +854,7 @@ function jalankanAutoFill(targetWa) {
 // satu kali jalan di halaman pertama yang dibuka user, bukan hanya ai_form.
 // Alasan tidak via service worker: SW tidak punya akses localStorage.
 // Di sini cukup fallback defensif kalau pwa.js belum termuat.
-export async function initApp() {
+export async function aiFormInitApp() {
   $('logoAsj').src = urlLogo;
   // Terjemahkan label statis sesuai bahasa terpilih (asj_lang).
   if (typeof window.renderLanguageLight === 'function') {
@@ -862,6 +862,13 @@ export async function initApp() {
     const lb = document.getElementById('lang-btn-ai');
     if (lb) lb.textContent = window.CURRENT_LANG === 'jp' ? 'ID' : 'JP';
   }
+  
+  window.renderLanguage = () => {
+    const lb = document.getElementById('lang-btn-ai');
+    if (lb) lb.textContent = window.CURRENT_LANG === 'jp' ? 'ID' : 'JP';
+    updateFormUI();
+  };
+
   // Select pasangan menggantikan input identitas/kenalan tertentu SEBELUM
   // updateFormUI pertama (dipasang sekali — idempotent via dataset.pairBound).
   enableStaticPairSelects();
@@ -1156,7 +1163,8 @@ const DEFERRED_RENDER: Record<string, boolean> = {};
 
 function arraySignature(type) {
   const items = latestCandidateData[type];
-  return items ? JSON.stringify(items) : '';
+  const lang = typeof window !== 'undefined' ? (window as any).CURRENT_LANG : '';
+  return (items ? JSON.stringify(items) : '') + '|' + lang;
 }
 
 function openSelectIn(container: HTMLElement | null) {
@@ -1514,7 +1522,7 @@ export function updateFormUI() {
   // ------------------------------------------------------
 }
 
-export function compressImage(event) {
+export function aiFormCompressImage(event) {
   const file = event.target.files[0];
   if (!file) return;
   // Guard seragam: format (image/*) + ukuran maks 10 MB — pesan jelas + reset.
@@ -1765,12 +1773,12 @@ export async function saveToDatabase() {
 // kini SEMUA alias seam HTML diregistrasikan TERPUSAT via
 // registerSeamAliases (js/core/bridge.js).
 registerSeamAliases({
-  initApp,
+  initApp: aiFormInitApp,
   switchTab,
   handleEnter,
   sendMessage,
   updateFormUI,
-  compressImage,
+  compressImage: aiFormCompressImage,
   handleDocUpload,
   saveToDatabase,
   updateArrayField,

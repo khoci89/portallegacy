@@ -1,4 +1,4 @@
-<!--HEAD_START-->
+﻿<!--HEAD_START-->
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -51,7 +51,7 @@
 
   <div id="global-loader" style="display: none !important;">
     <i class="fas fa-spinner fa-spin text-5xl text-pink-500 mb-4"></i>
-    <h2 class="text-xl font-bold tracking-widest text-slate-200" data-lang="loader.title">MEMUAT ASJ OS V7…</h2>
+    <h2 class="text-xl font-bold tracking-widest text-slate-200" data-lang="loader.title">MEMUAT ASJ OS V7â€¦</h2>
     <p id="loader-msg" class="text-sm text-slate-500 mt-2 mb-6" data-lang="loader.subtitle">Mempersiapkan UI Modern</p>
     <button onclick="document.getElementById('global-loader').style.display='none'" class="px-6 py-2.5 bg-red-600 hover:bg-red-500 border border-red-500 rounded-full text-sm font-bold text-white transition-colors shadow-lg"><i class="fas fa-times mr-1"></i> <span data-lang="button.force_close">Tutup Paksa Loading</span></button>
   </div>
@@ -176,231 +176,6 @@
 
   <main id="main-content" tabindex="-1" class="w-full max-w-7xl mx-auto px-4 mt-8 min-h-[50vh] flex flex-col gap-6">
     
-    <div id="page-public" class="block w-full">
-<!--PUBLIC_LANDING_START-->
-<!-- ========================================== -->
-<!-- TAB NAVIGASI PUBLIK (LOKER VS LAYANAN)     -->
-<!-- ========================================== -->
-<div class="flex justify-center mb-8 relative z-10">
-    <div id="tab-pub-wrap" class="inline-flex bg-slate-900 border-slate-700 rounded-full p-1 shadow-2xl border transition-colors">
-        <button data-action="switchPublicTab" data-action-arg='["loker"]' id="tab-pub-loker" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-sky-600 text-white shadow-md"><i class="fas fa-briefcase mr-2"></i><span data-lang="ui.tab_loker"> Lowongan Loker</span></button>
-        <button data-action="switchPublicTab" data-action-arg='["layanan"]' id="tab-pub-layanan" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-transparent text-slate-400 hover:text-white"><i class="fas fa-handshake mr-2"></i><span data-lang="ui.tab_layanan"> Program & Layanan ASJ</span></button>
-    </div>
-</div>
-
-<!-- ========================================== -->
-<!-- SECTION 1: LOKER (TAMPILAN LAMA)           -->
-<!-- ========================================== -->
-<!-- Pembatas max-w-5xl Dihapus agar sejajar dengan Header & Footer -->
-<div id="public-loker-section" class="block animate-fade-in">
-    <!-- KONTROL TEMA DAN FILTER STATUS LOKER -->
-    <div id="public-ctrl-bar" class="flex flex-wrap justify-between items-center p-4 rounded-xl border shadow-lg mb-6 gap-4 transition-colors">
-      
-      <div class="flex gap-2 items-center flex-wrap">
-        <span id="ctrl-label-tema" class="text-xs font-bold text-slate-300 mr-1 uppercase tracking-widest"><i class="fas fa-paint-brush"></i><span data-lang="ui.theme"> Tema</span></span>
-        <button data-action="toggleTheme" id="theme-toggle-btn" class="px-3 py-2 bg-white/10 hover:bg-white/20 text-slate-200 border border-white/25 rounded-full text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5" title="Ganti Tema"><i class="fas fa-moon"></i> <span data-lang="ui.dark">Dark</span></button>
-      </div>
-
-      <div class="flex gap-2 items-center flex-wrap">
-        <span class="text-xs font-bold text-slate-300 mr-2 uppercase tracking-widest">
-            <i class="fas fa-filter"></i> <span data-lang="public.filter">Filter</span>
-        </span>
-        <button data-action="filterPublicData" data-action-arg='["ALL"]' id="public-f-ALL" class="px-4 py-2 rounded-lg text-sm font-bold shadow-md transition"><span data-lang="public.all">Semua</span></button>
-        <button data-action="filterPublicData" data-action-arg='["OPEN"]' id="public-f-OPEN" class="px-4 py-2 rounded-lg text-sm font-bold shadow-md transition"><span data-lang="public.open">Buka</span></button>
-        <button data-action="filterPublicData" data-action-arg='["URGENT"]' id="public-f-URGENT" class="px-4 py-2 rounded-lg text-sm font-bold shadow-md transition"><span data-lang="public.urgent">Urgent</span></button>
-        <button data-action="filterPublicData" data-action-arg='["CLOSE"]' id="public-f-CLOSE" class="px-4 py-2 rounded-lg text-sm font-bold shadow-md transition"><span data-lang="public.close">Tutup</span></button>
-      </div>
-
-    </div>
-
-    <!-- TABEL LOKER PUBLIK -->
-    <div id="public-table-wrap" class="overflow-x-auto rounded-xl border shadow-xl bg-slate-900 border-slate-800 transition-colors duration-300">
-      <table class="responsive-table rt-active w-full min-w-[900px] text-left text-sm whitespace-nowrap">
-        <thead id="public-table-head" class="bg-slate-800 text-slate-200 text-sm uppercase tracking-wider font-bold border-b border-slate-700 transition-colors duration-300">
-          <tr>
-            <th scope="col" class="p-4 text-center w-32" data-lang="table.code">Kode Job</th>
-            <th scope="col" class="p-4" data-lang="table.job">Nama Pekerjaan</th>
-            <th scope="col" class="p-4 text-center" data-lang="table.status">Status</th>
-            <th scope="col" class="p-4" data-lang="table.req">Persyaratan & Ket.</th>
-            <th scope="col" class="p-4 text-center w-48" data-lang="table.action">Aksi Pelamar</th>
-          </tr>
-        </thead>
-        <tbody id="public-table-body" class="divide-y divide-white/5 transition-colors duration-300">
-           <!-- Data akan di-render otomatis dari JavaScript Index.html -->
-        </tbody>
-      </table>
-    </div>
-</div>
-
-<!-- ========================================== -->
-<!-- SECTION 2: PROGRAM & LAYANAN ASJ           -->
-<!-- ========================================== -->
-<div id="public-layanan-section" class="hidden animate-fade-in space-y-8">
-   
-   <!-- KARTU 1: PENERIMAAN SISWA BARU -->
-   <div class="bg-slate-900 border border-emerald-500/40 rounded-[2rem] overflow-hidden shadow-2xl relative flex flex-col lg:flex-row">
-       <!-- Sisi Kiri: Gambar Cover (Responsive: Tinggi proporsional di HP, Full tinggi di Desktop) -->
-       <div class="lg:w-2/5 w-full h-56 md:h-72 lg:h-auto relative overflow-hidden">
-            <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/sakra_banner.webp" alt="Siswa Jepang" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 hover:scale-105">
-            <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent lg:bg-gradient-to-r lg:from-transparent lg:via-slate-900/40 lg:to-slate-900/95 pointer-events-none"></div>
-            <div class="absolute bottom-4 left-6 lg:top-8 lg:left-8 lg:bottom-auto">
-                <div class="inline-flex items-center px-4 py-1.5 bg-emerald-950 border border-emerald-500/60 rounded-full text-emerald-400 text-sm font-bold uppercase tracking-widest shadow-lg">
-                    <i class="fas fa-bullhorn mr-2"></i> <span data-lang="landing.class_badge">Dibuka Kelas Baru</span>
-                </div>
-            </div>
-       </div>
-
-       <!-- Sisi Kanan: Detail Informasi -->
-       <div class="lg:w-3/5 w-full p-6 md:p-10 relative z-10 flex flex-col">
-           <h2 class="text-3xl md:text-4xl font-black text-white mb-2 leading-tight" data-lang="landing.class_title">Penerimaan Siswa Angkatan K</h2>
-           <p class="text-pink-400 font-bold tracking-wide mb-6" data-lang="landing.class_subtitle">Mulai Bulan Oktober 2026</p>
-           
-           <p class="text-slate-300 text-sm leading-relaxed mb-6" data-lang="landing.class_desc">
-               Wujudkan mimpimu berkarir di Jepang lewat jalur resmi. Tersedia program <strong>Tokutei Ginou (SSW)</strong> dan <strong>Magang (SO Swasta)</strong> dengan kuota eksklusif terbatas 25-30 anak per angkatan agar belajar lebih fokus.
-           </p>
-
-           <div class="bg-emerald-900/20 p-4 rounded-xl border-l-4 border-emerald-500 mb-6">
-               <h4 class="text-emerald-400 font-bold mb-1 text-sm"><i class="fas fa-hand-holding-usd mr-1"></i> <span data-lang="landing.class_dana_title">Tersedia Dana Talang</span></h4>
-               <p class="text-sm text-slate-300 leading-relaxed" data-lang="landing.class_dana_desc">Biaya keberangkatan bisa ditalangi <strong>TANPA BUNGA / RIBA</strong>. Cukup jaminan sertifikat/dokumen yang aman & bisa dicek kapan saja di LPK. Uang kembali <em>full</em> jika ada pembatalan sepihak dari Kaisha Jepang (kecuali MCU).</p>
-           </div>
-
-           <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
-               <!-- Rincian Biaya -->
-               <div class="bg-black/30 border border-slate-700/50 p-4 rounded-xl">
-                   <h4 class="text-sky-400 font-bold mb-3 text-sm uppercase tracking-widest"><i class="fas fa-wallet mr-1.5"></i> <span data-lang="landing.class_fee_title">Rincian Biaya</span></h4>
-                   <ul class="space-y-3 text-sm">
-                       <li class="flex gap-2.5">
-                           <i class="fas fa-check-circle text-sky-400 mt-0.5 text-sm"></i>
-                           <div>
-                               <p class="font-bold text-slate-200" data-lang="public.layanan_tg_ssw">Program TG / SSW</p>
-                               <p class="text-slate-300 mt-0.5" data-lang="public.layanan_tg_desc">Pendidikan: <span class="text-white font-bold">6 Jt</span><br>Keberangkatan: 15-25 Jt</p>
-                           </div>
-                       </li>
-                       <li class="flex gap-2.5">
-                           <i class="fas fa-check-circle text-sky-400 mt-0.5 text-sm"></i>
-                           <div>
-                               <p class="font-bold text-slate-200" data-lang="public.layanan_magang">Program Magang</p>
-                               <p class="text-slate-300 mt-0.5" data-lang="public.layanan_magang_desc">Pendidikan: <span class="text-white font-bold">5,5 Jt</span><br>Keberangkatan: 45-50 Jt</p>
-                           </div>
-                       </li>
-                   </ul>
-               </div>
-
-               <!-- Fasilitas Asrama -->
-               <div class="bg-black/30 border border-slate-700/50 p-4 rounded-xl">
-                   <h4 class="text-amber-400 font-bold mb-1 text-sm uppercase tracking-widest"><i class="fas fa-hotel mr-1.5"></i> <span data-lang="landing.class_fac_title">Fasilitas Asrama Gratis</span></h4>
-                   <p class="text-[9px] text-slate-500 mb-3 italic" data-lang="landing.class_fac_note">*Hanya iuran listrik Rp 30.000/Bln</p>
-                   <div class="grid grid-cols-2 gap-y-2 gap-x-1 text-xs text-slate-300">
-                       <div class="flex items-center gap-1.5"><i class="fas fa-bed text-amber-400/70 w-3"></i> <span data-lang="landing.class_fac_kasur">Kasur</span></div>
-                       <div class="flex items-center gap-1.5"><i class="fas fa-wifi text-amber-400/70 w-3"></i> <span data-lang="landing.class_fac_wifi">WiFi</span></div>
-                       <div class="flex items-center gap-1.5"><i class="fas fa-utensils text-amber-400/70 w-3"></i> <span data-lang="landing.class_fac_dapur">Dapur</span></div>
-                       <div class="flex items-center gap-1.5"><i class="fas fa-tshirt text-amber-400/70 w-3"></i> <span data-lang="landing.class_fac_cuci">Cuci</span></div>
-                       <div class="flex items-center gap-1.5"><i class="fas fa-motorcycle text-amber-400/70 w-3"></i> <span data-lang="landing.class_fac_motor">Motor</span></div>
-                       <div class="flex items-center gap-1.5"><i class="fas fa-futbol text-amber-400/70 w-3"></i> <span data-lang="landing.class_fac_or">OR</span></div>
-                   </div>
-               </div>
-           </div>
-           
-           <!-- Aksi Pendaftaran -->
-           <div class="flex flex-col sm:flex-row gap-3 mt-auto">
-               <a href="https://chat.whatsapp.com/F0iP9xcdi4G8QDzn1U4bAH" target="_blank" class="px-5 py-3.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white text-sm font-bold text-center rounded-xl shadow-md transition hover:-translate-y-0.5" title="Join Grup WhatsApp"><i class="fab fa-whatsapp text-emerald-400 text-lg"></i> <span data-lang="landing.class_btn_wa">Grup WA</span></a>
-               <button data-action="bukaModalCekDataSiswa" class="px-5 py-3.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white text-sm font-bold text-center rounded-xl shadow-md transition hover:-translate-y-0.5" title="Cek List Kandidat Terdaftar"><i class="fas fa-list-alt text-sky-400 text-lg"></i> <span data-lang="landing.class_btn_cek">Cek Data</span></button>
-               <button data-action="bukaFormSiswa" class="w-full inline-flex items-center justify-center px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition shadow-[0_0_15px_rgba(118,185,0,0.4)]">
-                    <i class="fas fa-edit mr-2"></i> <span data-lang="landing.class_btn_form">Form Daftar Siswa</span>
-                 </button>
-           </div>
-       </div>
-   </div>
-
-   <!-- BARIS BAWAH: LAYANAN JASA (2 KOLOM) -->
-   <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-       
-       <!-- Card 2: Pengurusan Visa -->
-       <div class="bg-slate-900 border border-sky-500/30 rounded-[2rem] hover:-translate-y-1 transition-transform duration-300 shadow-xl group flex flex-col overflow-hidden relative">
-           <!-- Gambar Top -->
-           <div class="h-48 md:h-56 relative w-full overflow-hidden">
-                <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/dark_tokyo_banner.webp" alt="Visa Jepang" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
-                <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent pointer-events-none"></div>
-                
-                <!-- Judul Overlay -->
-                <div class="absolute bottom-4 left-6 flex items-center gap-3">
-                    <div class="w-12 h-12 bg-sky-950 border border-sky-500/60 rounded-full flex items-center justify-center shadow-lg">
-                        <i class="fas fa-passport text-xl text-sky-400"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-black text-white tracking-wide leading-tight drop-shadow-md" data-lang="landing.visa_title">Pengurusan Visa</h3>
-                        <p class="text-xs text-sky-400 font-bold uppercase tracking-wider drop-shadow-md" data-lang="landing.visa_subtitle">Tokutei Ginou & Magang</p>
-                    </div>
-                </div>
-           </div>
-           
-           <!-- Konten Bottom -->
-           <div class="p-6 md:p-8 flex-1 flex flex-col relative z-10">
-               <p class="text-sm text-slate-300 mb-6 leading-relaxed" data-lang="landing.visa_desc">
-                   Menerima pembuatan dokumen dan Visa Jepang (TG & Magang). Melayani proses pemberkasan untuk kandidat di area/domisili <strong>Surabaya, Jakarta, dan Medan</strong>.
-               </p>
-               <ul class="space-y-3 text-sm text-slate-300 mb-8 flex-1 font-medium">
-                   <li class="flex items-start"><i class="fas fa-check-circle text-sky-400 mr-2.5 mt-0.5 text-sm"></i> <span data-lang="landing.visa_list_1">Proses Cepat & Terpercaya</span></li>
-                   <li class="flex items-start"><i class="fas fa-check-circle text-sky-400 mr-2.5 mt-0.5 text-sm"></i> <span data-lang="landing.visa_list_2">Legal & Resmi sesuai Prosedur</span></li>
-                   <li class="flex items-start"><i class="fas fa-check-circle text-sky-400 mr-2.5 mt-0.5 text-sm"></i> <span data-lang="landing.visa_list_3">Pendampingan Penuh sampai Berangkat</span></li>
-               </ul>
-               <a href="https://wa.me/6287889502004?text=Halo%20Admin%20ASJ,%20saya%20ingin%20konsultasi%20jasa%20pembuatan%20Visa%20Jepang." target="_blank" class="block w-full py-3.5 bg-sky-600 hover:bg-sky-500 text-white text-sm font-bold text-center rounded-xl shadow-[0_0_15px_rgba(118,185,0,0.4)] transition mt-auto"><i class="fab fa-whatsapp mr-1 text-lg"></i> <span data-lang="landing.visa_btn">Konsultasi Visa</span></a>
-           </div>
-       </div>
-
-       <!-- Card 3: Ujian JFT & SSW -->
-       <div class="bg-slate-900 border border-amber-500/30 rounded-[2rem] hover:-translate-y-1 transition-transform duration-300 shadow-xl group flex flex-col overflow-hidden relative">
-           <!-- Gambar Top -->
-           <div class="h-48 md:h-56 relative w-full overflow-hidden">
-                <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/momiji_banner.webp" alt="Ujian Jepang" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
-                <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent pointer-events-none"></div>
-                
-                <!-- Judul Overlay -->
-                <div class="absolute bottom-4 left-6 flex items-center gap-3">
-                    <div class="w-12 h-12 bg-amber-950 border border-amber-500/60 rounded-full flex items-center justify-center shadow-lg">
-                        <i class="fas fa-laptop-code text-xl text-amber-400"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-black text-white tracking-wide leading-tight drop-shadow-md" data-lang="landing.exam_title">Pendaftaran Ujian</h3>
-                        <p class="text-xs text-amber-400 font-bold uppercase tracking-wider drop-shadow-md" data-lang="landing.exam_subtitle">JFT Basic & SSW Prometric</p>
-                    </div>
-                </div>
-           </div>
-
-           <!-- Konten Bottom -->
-           <div class="p-6 md:p-8 flex-1 flex flex-col relative z-10">
-               <p class="text-sm text-slate-300 mb-6 leading-relaxed" data-lang="landing.exam_desc">
-                   Solusi cepat dapat jadwal ujian! Kami bantu pendaftaran resmi akun Prometric Anda untuk seluruh titik lokasi di Indonesia (Bandung, Jakarta, Surabaya, Bali, dll).
-               </p>
-               <ul class="space-y-3 text-sm text-slate-300 mb-8 flex-1 font-medium">
-                   <li class="flex items-start"><i class="fas fa-check-circle text-amber-400 mr-2.5 mt-0.5 text-sm"></i> <span data-lang="landing.exam_list_1">Info Jadwal Terupdate (Agustus-September)</span></li>
-                   <li class="flex items-start"><i class="fas fa-check-circle text-amber-400 mr-2.5 mt-0.5 text-sm"></i> <span data-lang="landing.exam_list_2">Melayani Pendaftaran Individu / Group</span></li>
-                   <li class="flex items-start"><i class="fas fa-check-circle text-amber-400 mr-2.5 mt-0.5 text-sm"></i> <span data-lang="landing.exam_list_3"><strong class="text-amber-300 font-bold">Guarantee 100%</strong> Request Location</span></li>
-               </ul>
-               <a href="https://wa.me/6287889502004?text=Halo%20Admin%20ASJ,%20saya%20butuh%20bantuan%20pendaftaran%20jadwal%20ujian%20JFT/SSW." target="_blank" class="block w-full py-3.5 bg-amber-600 hover:bg-amber-500 text-white text-sm font-bold text-center rounded-xl shadow-[0_0_15px_rgba(217,119,6,0.4)] transition mt-auto"><i class="fab fa-whatsapp mr-1 text-lg"></i> <span data-lang="landing.exam_btn">Booking Jadwal Ujian</span></a>
-           </div>
-       </div>
-
-   </div>
-
-   <!-- BANNER MAPS LPK -->
-   <div class="mt-8 bg-slate-800 border border-slate-700 rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-center gap-5 text-center sm:text-left shadow-lg">
-       <div class="flex items-center gap-4">
-           <div class="w-12 h-12 bg-red-900/30 rounded-full flex items-center justify-center shrink-0">
-               <i class="fas fa-map-marker-alt text-red-500 text-xl"></i>
-           </div>
-           <div>
-               <h4 class="text-white font-bold text-sm mb-1" data-lang="landing.maps_title">Kunjungi LPK Amanah Sakura Japan</h4>
-               <p class="text-sm text-slate-300 max-w-xl" data-lang="landing.maps_desc">Jl. Kyai Ageng Musakaf, Desa Gandukepuh, Kec. Sukorejo, Kab. Ponorogo, Jawa Timur.</p>
-           </div>
-       </div>
-       <a id="maps-lpk-link" href="https://maps.app.goo.gl/rXZ1YZAtT9JUNn6q6?g_st=ic" target="_blank" class="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold rounded-xl border border-slate-500 transition shadow hover:-translate-y-0.5 whitespace-nowrap"><i class="fas fa-location-arrow mr-1.5"></i> <span data-lang="landing.maps_btn">Buka Google Maps</span></a>
-   </div>
-</div>
-
-<!-- MODAL CEK DATA SISWA BARU -->
-<!--PUBLIC_LANDING_END-->
-</div>
     <div id="page-admin" class="hidden w-full">
 <div class="space-y-6">
 
@@ -423,7 +198,7 @@
     <div class="bg-slate-900 border border-slate-700 p-4 rounded-xl shadow-lg flex flex-col h-full min-h-[300px]">
        <h3 class="text-sm font-bold text-white mb-3"><i class="fas fa-tasks text-pink-400 mr-2"></i><span data-lang="admin.task_board"> Papan Tugas Tim Admin</span></h3>
        <div class="flex gap-2 mb-3">
-         <input type="text" id="todo-input" class="flex-1 bg-black p-2.5 rounded-lg text-sm text-white border border-slate-600 outline-none focus:border-pink-500 transition" data-lang-placeholder="admin.task_placeholder" placeholder="Ketik tugas baru lalu tekan Tambah…" aria-label="Ketik tugas baru lalu tekan Tambah…" data-lang-aria="admin.task_placeholder">
+         <input type="text" id="todo-input" class="flex-1 bg-black p-2.5 rounded-lg text-sm text-white border border-slate-600 outline-none focus:border-pink-500 transition" data-lang-placeholder="admin.task_placeholder" placeholder="Ketik tugas baru lalu tekan Tambahâ€¦" aria-label="Ketik tugas baru lalu tekan Tambahâ€¦" data-lang-aria="admin.task_placeholder">
          <button data-action="tambahTugasAdmin" aria-label="Tambah" data-lang-aria="button.add" class="bg-red-600 hover:bg-red-500 px-5 rounded-lg text-sm text-white font-bold transition shadow-lg"><i class="fas fa-plus"></i></button>
        </div>
        <div id="todo-list" class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2 max-h-[190px]">
@@ -464,11 +239,11 @@
   <!-- 3. KONTEN TAB: LOKER PUBLIK                -->
   <!-- ========================================== -->
   <div id="admin-kelola" class="block bg-slate-900 p-4 rounded-xl border border-slate-700 overflow-x-auto shadow-xl">
-    <!-- Search di atas tabel (filterKelolaLoker di 05_render.js) — input ini
+    <!-- Search di atas tabel (filterKelolaLoker di 05_render.js) â€” input ini
          wajib ada, kalau tidak filter kelola mati diam-diam (audit id 2026-08-12). -->
     <div class="relative w-full md:w-72 mb-3">
       <i class="fas fa-search absolute left-3 top-2.5 text-slate-300 text-sm"></i>
-      <input type="text" id="search-kelola" onkeyup="filterKelolaLoker()" data-lang-placeholder="admin.search_placeholder" placeholder="Cari Kode / Pekerjaan…" class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition" aria-label="Cari loker kelola">
+      <input type="text" id="search-kelola" onkeyup="filterKelolaLoker()" data-lang-placeholder="admin.search_placeholder" placeholder="Cari Kode / Pekerjaanâ€¦" class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition" aria-label="Cari loker kelola">
     </div>
     <table class="responsive-table rt-active w-full text-sm text-left whitespace-nowrap min-w-[800px]">
       <thead class="bg-slate-800 text-slate-300 uppercase text-sm border-b border-slate-700 tracking-wider">
@@ -492,7 +267,7 @@
          <h2 class="text-purple-400 font-bold text-lg"><i class="fas fa-server mr-2"></i> <span data-lang="admin.history_internal">Histori Job Internal</span></h2>
          <div class="relative w-full md:w-72">
             <i class="fas fa-search absolute left-3 top-2.5 text-slate-300 text-sm"></i>
-            <input type="text" id="search-dbjob" oninput="window.debouncedFilterDbJob && window.debouncedFilterDbJob(250)" onkeyup="window.debouncedFilterDbJob && window.debouncedFilterDbJob(250)" data-lang-placeholder="admin.search_placeholder" placeholder="Cari ID, TSK, Pekerjaan…" class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-purple-500 transition">
+            <input type="text" id="search-dbjob" oninput="window.debouncedFilterDbJob && window.debouncedFilterDbJob(250)" onkeyup="window.debouncedFilterDbJob && window.debouncedFilterDbJob(250)" data-lang-placeholder="admin.search_placeholder" placeholder="Cari ID, TSK, Pekerjaanâ€¦" class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-purple-500 transition">
          </div>
       </div>
       
@@ -546,19 +321,19 @@
             <label class="block text-sm font-bold text-slate-300 mb-1.5" data-lang="admin.form_location">PENEMPATAN LOKASI (Pilih Checkbox)</label>
             <div class="relative mb-2">
                <i class="fas fa-search absolute left-3 top-3 text-slate-500 text-sm"></i>
-               <input type="text" onkeyup="filterCbx('checkbox-lokasi', this.value)" data-lang-placeholder="admin.form_search_location" placeholder="Cari lokasi…" class="w-full pl-8 p-2.5 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition">
+               <input type="text" onkeyup="filterCbx('checkbox-lokasi', this.value)" data-lang-placeholder="admin.form_search_location" placeholder="Cari lokasiâ€¦" class="w-full pl-8 p-2.5 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition">
             </div>
             <div id="checkbox-lokasi" class="grid grid-cols-2 gap-2 h-28 overflow-y-auto p-3 bg-black/40 border border-slate-700 rounded-lg text-sm text-slate-300 mb-2 custom-scrollbar"></div>
-            <input type="text" id="custom-lokasi" data-lang-placeholder="admin.form_custom_location" placeholder="✍️ Ketik manual lokasi lainnya (opsional)…" class="w-full p-3 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition">
+            <input type="text" id="custom-lokasi" data-lang-placeholder="admin.form_custom_location" placeholder="âœï¸ Ketik manual lokasi lainnya (opsional)â€¦" class="w-full p-3 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition">
           </div>
           <div>
             <label class="block text-sm font-bold text-slate-300 mb-1.5" data-lang="admin.form_req">SYARAT KANDIDAT (Pilih Checkbox)</label>
             <div class="relative mb-2">
                <i class="fas fa-search absolute left-3 top-3 text-slate-500 text-sm"></i>
-               <input type="text" onkeyup="filterCbx('checkbox-syarat', this.value)" data-lang-placeholder="admin.form_search_req" placeholder="Cari syarat…" class="w-full pl-8 p-2.5 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition">
+               <input type="text" onkeyup="filterCbx('checkbox-syarat', this.value)" data-lang-placeholder="admin.form_search_req" placeholder="Cari syaratâ€¦" class="w-full pl-8 p-2.5 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition">
             </div>
             <div id="checkbox-syarat" class="grid grid-cols-2 gap-2 h-24 overflow-y-auto p-3 bg-black/40 border border-slate-700 rounded-lg text-sm text-slate-300 mb-2 custom-scrollbar"></div>
-            <input type="text" id="custom-syarat" data-lang-placeholder="admin.form_custom_req" placeholder="✍️ Ketik manual syarat lainnya (opsional)…" class="w-full p-3 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition">
+            <input type="text" id="custom-syarat" data-lang-placeholder="admin.form_custom_req" placeholder="âœï¸ Ketik manual syarat lainnya (opsional)â€¦" class="w-full p-3 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition">
           </div>
           <div>
             <label class="block text-sm font-bold text-slate-300 mb-1.5"><i class="fas fa-file-upload mr-1"></i> <span data-lang="admin.form_req_upload_docs">SYARAT UPLOAD DOKUMEN</span></label>
@@ -577,7 +352,7 @@
                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition"><input type="checkbox" value="UNIVERSITAS" class="cbx-req-file accent-red-500 w-5 h-5"> <span data-lang="admin.doc_univ">UNIVERSITAS</span></label>
                <label class="flex items-center gap-2 cursor-pointer hover:text-white transition"><input type="checkbox" value="ALL" class="cbx-req-file accent-pink-500 w-5 h-5"> <span data-lang="admin.doc_all">Semua File Folder (SIM dll)</span></label>
             </div>
-            <input type="text" id="custom-req-file" placeholder="✍️ Ketik dokumen lain (pisahkan dgn koma)…" class="w-full p-3 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition">
+            <input type="text" id="custom-req-file" placeholder="âœï¸ Ketik dokumen lain (pisahkan dgn koma)â€¦" class="w-full p-3 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition">
           </div>
           <div><label class="block text-sm font-bold text-slate-300 mb-1.5" data-lang="admin.form_note">KETERANGAN PUBLIK (Opsional)</label><textarea id="input-keterangan" rows="2" class="w-full p-3 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition"></textarea></div>
         </div>
@@ -610,7 +385,7 @@
       <div class="flex flex-wrap gap-3 w-full md:w-auto">
          <div class="relative flex-1 md:w-64">
             <i class="fas fa-search absolute left-3 top-2.5 text-slate-300 text-sm"></i>
-            <input type="text" id="search-kandidat" oninput="window._debouncedFilter && window._debouncedFilter()" onkeyup="window._debouncedFilter && window._debouncedFilter()" data-lang-placeholder="admin.search_candidate" placeholder="Find Nama, Code, Tahapan…" class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-sky-500 transition">
+            <input type="text" id="search-kandidat" oninput="window._debouncedFilter && window._debouncedFilter()" onkeyup="window._debouncedFilter && window._debouncedFilter()" data-lang-placeholder="admin.search_candidate" placeholder="Find Nama, Code, Tahapanâ€¦" class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-sky-500 transition">
          </div>
          <button data-action="bukaModalTambahKandidat" class="px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 shadow-lg transition whitespace-nowrap"><i class="fas fa-user-plus mr-1"></i> <span data-lang="button.manual_input">Input Manual</span></button>
          <button id="btn-view-kandidat" onclick="window.toggleViewKandidat()" class="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><i class="fas fa-table-list mr-1"></i> <span data-lang="admin.view_simple">Tampilan Sederhana</span></button>
@@ -672,11 +447,11 @@
     <div id="form-jadwal-container" class="hidden bg-black/40 border border-slate-700 rounded-xl p-5 mb-5 shadow-inner">
       <form id="form-tambah-jadwal" onsubmit="submitJadwal(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div><label class="block text-xs font-bold text-slate-300 mb-1.5" data-lang="admin.form_agenda_name">NAMA AGENDA</label><input type="text" id="j-nama" required class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500 transition"></div>
-        <div><label class="block text-xs font-bold text-slate-300 mb-1.5" data-lang="admin.form_job_id">ID LOKER</label><input type="text" id="j-loker" placeholder="UMUM / ASJ…" class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500 transition"></div>
+        <div><label class="block text-xs font-bold text-slate-300 mb-1.5" data-lang="admin.form_job_id">ID LOKER</label><input type="text" id="j-loker" placeholder="UMUM / ASJâ€¦" class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500 transition"></div>
         <div><label class="block text-xs font-bold text-slate-300 mb-1.5" data-lang="admin.form_time">WAKTU (TGL & JAM)</label><input type="datetime-local" id="j-waktu" required class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500 transition"></div>
-        <div><label class="block text-xs font-bold text-slate-300 mb-1.5" data-lang="admin.form_location_zoom">LOKASI / MEDIA ZOOM</label><input type="text" id="j-lokasi" placeholder="Zoom / Kantor…" class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500 transition"></div>
+        <div><label class="block text-xs font-bold text-slate-300 mb-1.5" data-lang="admin.form_location_zoom">LOKASI / MEDIA ZOOM</label><input type="text" id="j-lokasi" placeholder="Zoom / Kantorâ€¦" class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500 transition"></div>
         <div><label class="block text-xs font-bold text-slate-300 mb-1.5" data-lang="admin.form_tsk_admin">PENGURUS (TSK)</label><select id="j-tsk" required class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500 transition"></select></div>
-        <div><label class="block text-xs font-bold text-slate-300 mb-1.5" data-lang="admin.form_zoom_link">LINK TAUTAN ZOOM (Opsional)</label><input type="url" id="j-link" placeholder="https://…" class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500 transition"></div>
+        <div><label class="block text-xs font-bold text-slate-300 mb-1.5" data-lang="admin.form_zoom_link">LINK TAUTAN ZOOM (Opsional)</label><input type="url" id="j-link" placeholder="https://â€¦" class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500 transition"></div>
         <div class="md:col-span-2 mt-2"><button type="submit" id="btn-submit-jadwal" class="w-full py-4 rounded-xl bg-amber-600 hover:bg-amber-500 font-bold text-white text-sm shadow-lg transition"><i class="fas fa-save mr-2"></i> <span data-lang="button.save_schedule">Simpan Jadwal</span></button></div>
       </form>
     </div>
@@ -702,7 +477,7 @@
     <div class="flex flex-wrap justify-between items-center gap-3 border-b border-sky-900/50 pb-4 mb-4">
       <h2 class="text-sky-400 font-bold text-lg"><i class="fas fa-envelope mr-2"></i> <span data-lang="admin.mail_inbox">Form Mail Inbox</span></h2>
       <div class="flex flex-wrap items-center gap-2">
-        <input id="mail-search" oninput="mailSearchText=this.value; renderFormInbox();" placeholder="Cari nama / WA / job…" aria-label="Cari nama / WA / job…" data-lang-aria="admin.mail_search_ph" class="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:border-sky-500 outline-none w-52">
+        <input id="mail-search" oninput="mailSearchText=this.value; renderFormInbox();" placeholder="Cari nama / WA / jobâ€¦" aria-label="Cari nama / WA / jobâ€¦" data-lang-aria="admin.mail_search_ph" class="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:border-sky-500 outline-none w-52">
         <div class="flex bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
           <button onclick="mailFilterStatus='MENUNGGU'; renderMailFilterUI(); renderFormInbox();" id="mail-f-MENUNGGU" class="px-3 py-2 text-xs font-bold bg-sky-600 text-white transition"><span data-lang="ui.waiting">MENUNGGU</span></button>
           <button onclick="mailFilterStatus='REVIEW'; renderMailFilterUI(); renderFormInbox();" id="mail-f-REVIEW" class="px-3 py-2 text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition"><span data-lang="ui.review_admin">REVIEW ADMIN</span></button>
@@ -742,14 +517,14 @@
   <div id="admin-wa" class="hidden bg-slate-900 rounded-xl border border-emerald-900/50 p-6 shadow-xl">
      <h2 class="text-emerald-400 font-bold mb-6 border-b border-emerald-900/50 pb-3 text-lg"><i class="fab fa-whatsapp mr-2"></i><span data-lang="ui.manage_wa_templates"> Kelola Template WA Pintar</span></h2>
 
-     <!-- UNDANGAN GRUP KELAS (Orang Tua/Wali) — di PUNCAK tab WA Pintar supaya selalu ketemu pertama kali -->
+     <!-- UNDANGAN GRUP KELAS (Orang Tua/Wali) â€” di PUNCAK tab WA Pintar supaya selalu ketemu pertama kali -->
      <div class="mb-6 bg-emerald-950/60 p-5 rounded-2xl border-2 border-emerald-500/70 shadow-[0_0_25px_rgba(16,185,129,0.3)] flex flex-col sm:flex-row sm:items-center gap-4">
         <div class="flex-1">
            <div class="flex items-center gap-2 mb-1.5">
               <span class="text-[9px] font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 rounded-full px-2.5 py-1"><i class="fas fa-star text-amber-400 mr-1"></i><span data-lang="ui.featured_badge">Fitur Khusus</span></span>
            </div>
            <h3 class="text-sm font-bold text-emerald-300 uppercase tracking-widest mb-1"><i class="fab fa-whatsapp text-emerald-400 mr-1"></i><span data-lang="ui.invite_class_title">Undangan Grup WhatsApp Kelas (Orang Tua/Wali)</span></h3>
-           <p class="text-xs text-slate-300 leading-relaxed" data-lang="ui.invite_class_wa_desc">Kirim undangan Grup WA ke Orang Tua/Wali secara massal — tempel daftar <span class="font-mono text-emerald-400">Nama|WA</span>, isi link grup + pesan (varian dipisah <span class="font-mono text-emerald-400">---</span> bergilir anti-ban), lalu kirim.</p>
+           <p class="text-xs text-slate-300 leading-relaxed" data-lang="ui.invite_class_wa_desc">Kirim undangan Grup WA ke Orang Tua/Wali secara massal â€” tempel daftar <span class="font-mono text-emerald-400">Nama|WA</span>, isi link grup + pesan (varian dipisah <span class="font-mono text-emerald-400">---</span> bergilir anti-ban), lalu kirim.</p>
         </div>
         <button data-action="bukaModalUndanganKelas" class="px-5 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold text-center rounded-xl shadow-lg shadow-emerald-900/60 transition hover:-translate-y-0.5 shrink-0" title="Kirim Undangan Grup WA ke Orang Tua/Wali (tempel daftar Nama|WA)"><i class="fab fa-whatsapp text-white text-lg mr-1"></i><span data-lang="ui.start_invite">Mulai Kirim Undangan</span></button>
      </div>
@@ -766,7 +541,7 @@
               </div>
               <div>
                  <label class="block text-xs font-bold text-slate-300 mb-1"><span data-lang="ui.template_message">ISI PESAN WA</span></label>
-                 <textarea id="wa-isi" required rows="8" placeholder="Konnichiwa <<NAMA>>,&#10;Jadwal interview untuk posisi <<JOB>>…" class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-600 text-white text-sm outline-none focus:border-emerald-500 transition leading-relaxed"></textarea>
+                 <textarea id="wa-isi" required rows="8" placeholder="Konnichiwa <<NAMA>>,&#10;Jadwal interview untuk posisi <<JOB>>â€¦" class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-600 text-white text-sm outline-none focus:border-emerald-500 transition leading-relaxed"></textarea>
                  <p class="text-[9px] text-emerald-400/80 mt-1.5 leading-relaxed font-mono bg-emerald-900/20 p-2 rounded" data-lang="ui.template_code_hint">
                     <strong>Gunakan Kode Ini:</strong><br>
                     &lt;&lt;NAMA&gt;&gt; = Nama Kandidat<br>
@@ -826,7 +601,7 @@
         <h3 class="text-sm font-bold text-rose-400 mb-2 uppercase tracking-wider"><i class="fas fa-bullhorn mr-1"></i><span data-lang="ui.marquee_live"> Pengumuman Berjalan (Live)</span></h3>
         <p class="text-xs text-slate-300 mb-3"><span data-lang="ui.marquee_live_desc">Teks ini akan muncul berjalan (Marquee) di semua halaman (Publik, Kandidat, Admin).</span></p>
         <div class="flex gap-2">
-            <input type="text" id="input-pengumuman" placeholder="Ketik pengumuman di sini… (Kosongkan untuk menghapus)" aria-label="Ketik pengumuman di sini… (Kosongkan untuk menghapus)" data-lang-aria="admin.announce_ph" class="flex-1 bg-slate-800 border border-slate-600 rounded-lg text-sm px-4 py-2.5 text-white outline-none focus:border-rose-500">
+            <input type="text" id="input-pengumuman" placeholder="Ketik pengumuman di siniâ€¦ (Kosongkan untuk menghapus)" aria-label="Ketik pengumuman di siniâ€¦ (Kosongkan untuk menghapus)" data-lang-aria="admin.announce_ph" class="flex-1 bg-slate-800 border border-slate-600 rounded-lg text-sm px-4 py-2.5 text-white outline-none focus:border-rose-500">
             <button data-action="simpanPengumuman" class="bg-rose-600 hover:bg-rose-500 text-white px-6 py-2.5 rounded-lg text-sm font-bold transition shadow-lg"><i class="fas fa-save mr-1"></i><span data-lang="ui.save_publish"> Simpan & Tayangkan</span></button>
         </div>
     </div>
@@ -836,159 +611,8 @@
 </div>
     
     <!-- DASHBOARD KANDIDAT -->
-<!--KANDIDAT_DASHBOARD_START-->
+
     <!-- DASHBOARD KANDIDAT -->
-    <div id="page-kandidat" class="hidden w-full">
-       <div class="glass-panel p-5 sm:p-8 md:p-10 rounded-[2.5rem] shadow-2xl text-center max-w-4xl mx-auto relative overflow-hidden">
-          <i class="fas fa-id-card text-5xl md:text-6xl text-emerald-400 mb-4 md:mb-6 drop-shadow-xl"></i>
-          <h2 class="text-2xl md:text-3xl font-black text-white mb-3" id="k-dash-nama" data-lang="candidate.welcome">Selamat Datang</h2>
-          <div class="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-3 md:px-8 md:py-4 bg-black/40 border border-emerald-500/30 rounded-full text-sm md:text-sm text-slate-300 mb-5 md:mb-6 shadow-inner w-full md:w-auto">
-             <span data-lang="candidate.job_applied">Job Dilamar:</span> <span class="font-black text-emerald-400 text-sm md:text-base" id="k-dash-job">-</span>
-             <span class="text-slate-500">|</span>
-             <span data-lang="candidate.stage">Tahapan:</span> <span class="font-black text-sky-400 text-sm md:text-base" id="k-dash-tahapan">-</span> (<span id="k-dash-status">-</span>)
-          </div>
-          <!-- DIGITAL STUDENT CARD (MUNCUL OTOMATIS JIKA VIP) -->
-          <div id="student-card-container" class="hidden max-w-sm mx-auto mb-8 perspective-1000 relative group">
-              <!-- Glow Effect di Belakang Kartu -->
-              <div class="absolute -inset-1 bg-gradient-to-r from-amber-400 to-yellow-600 rounded-[2rem] blur opacity-25 group-hover:opacity-60 transition duration-1000 group-hover:duration-200"></div>
-              
-              <!-- Desain Kartu -->
-              <div class="relative w-full h-56 md:h-64 bg-gradient-to-tr from-slate-900 via-slate-800 to-slate-900 border border-slate-700 rounded-[2rem] p-6 shadow-2xl flex flex-col justify-between overflow-hidden text-left transform transition-transform duration-500 hover:scale-105">
-                  <!-- Motif Jepang Latar Belakang -->
-                  <div class="absolute -right-10 -top-10 text-slate-800/50 text-[10rem] opacity-20 transform rotate-12 pointer-events-none"><i class="fas fa-sun"></i></div>
-                  
-                  <!-- Header Kartu -->
-                  <div class="flex justify-between items-start z-10">
-                      <div class="flex items-center gap-3">
-                          <div class="w-11 h-11 bg-white rounded-full shadow-lg overflow-hidden flex items-center justify-center border border-slate-600">
-                            <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" alt="Logo ASJ" class="w-full h-full object-cover scale-110">
-                          </div>
-                          <div>
-                              <h3 class="text-white font-black text-sm md:text-sm tracking-widest"><span data-lang="ui.student_id">ASJ STUDENT ID</span></h3>
-                              <p class="text-amber-400 text-[8px] md:text-[9px] font-bold uppercase tracking-[0.2em]" id="sc-kelas"><span data-lang="ui.vip_member">VIP MEMBER</span></p>
-                          </div>
-                      </div>
-                      <i class="fas fa-check-circle text-emerald-400 text-xl shadow-[0_0_10px_rgba(118,185,0,0.5)] rounded-full"></i>
-                  </div>
-
-                  <!-- Tengah: Identitas & QR -->
-                  <div class="flex justify-between items-center mt-auto z-10">
-                      <div>
-                          <p class="text-slate-300 text-[9px] uppercase font-bold mb-0.5"><span data-lang="ui.student_name">Nama Siswa</span></p>
-                          <p class="text-white font-black text-sm md:text-base tracking-wide leading-tight break-words line-clamp-2 max-w-[170px]" id="sc-nama">-</p>
-                          
-                          <p class="text-slate-300 text-[9px] uppercase font-bold mt-3 mb-0.5"><span data-lang="ui.reg_id">ID Pendaftaran</span></p>
-                          <p class="text-sky-300 font-mono text-sm md:text-sm font-bold" id="sc-id">-</p>
-                      </div>
-                      <div class="bg-white p-2 rounded-xl shadow-lg border-2 border-slate-200">
-                       <img id="sc-qr" src="" alt="QR Code" referrerpolicy="no-referrer" class="w-20 h-20 md:w-24 md:h-24 object-contain">
-                      </div>
-                  </div>
-              </div>
-          </div>
-          
-          <div class="max-w-xl mx-auto mb-6 md:mb-8 bg-black/40 border border-slate-700 p-4 md:p-5 rounded-2xl text-left shadow-lg">
-               <div class="flex justify-between items-center mb-2">
-                   <span class="text-sm font-bold text-slate-300"><i class="fas fa-id-badge text-sky-400 mr-1"></i><span data-lang="ui.cv_mini_basic"> CV Mini (Data Dasar)</span></span>
-                   <span id="prog-mini-txt" class="text-sm font-bold text-sky-400">0%</span>
-               </div>
-               <div class="w-full bg-slate-800 rounded-full h-2.5 mb-4 shadow-inner">
-                   <div id="prog-mini-bar" class="bg-gradient-to-r from-sky-600 to-sky-400 h-2.5 rounded-full transition-[width] duration-1000" style="width: 0%"></div>
-               </div>
-
-               <div class="flex justify-between items-center mb-2">
-                   <span class="text-sm font-bold text-slate-300"><i class="fas fa-file-signature text-emerald-400 mr-1"></i><span data-lang="ui.cv_master_detail"> CV Master (Dokumen & Detail)</span></span>
-                   <span id="prog-master-txt" class="text-sm font-bold text-emerald-400">0%</span>
-               </div>
-               <div class="w-full bg-slate-800 rounded-full h-2.5 shadow-inner">
-                   <div id="prog-master-bar" class="bg-gradient-to-r from-emerald-600 to-emerald-400 h-2.5 rounded-full transition-[width] duration-1000" style="width: 0%"></div>
-               </div>
-               <p id="prog-msg" class="text-xs text-slate-300 mt-4 italic text-center font-bold"><span data-lang="ui.silver_crown_hint">Lengkapi profil Anda hingga 100% untuk mendapatkan Mahkota Perak! </span><i class="fas fa-medal"></i></p>
-          </div>
-
-          <!-- PANEL JADWAL KANDIDAT -->
-          <div id="k-dash-jadwal-box" class="hidden mb-6 md:mb-8 max-w-xl mx-auto bg-gradient-to-r from-amber-950 to-rose-950 border border-amber-500/40 p-5 md:p-6 rounded-[2rem] text-left shadow-[0_0_20px_rgba(118,185,0,0.15)] relative overflow-hidden">
-              <div class="absolute -right-4 -top-4 text-amber-500/10 text-7xl"><i class="fas fa-calendar-alt"></i></div>
-              <h3 class="relative z-10 text-lg font-black text-amber-400 mb-4 tracking-wide"><i class="fas fa-calendar-check mr-2 text-rose-400 animate-pulse"></i><span data-lang="ui.your_schedule"> JADWAL ANDA</span></h3>
-              <div id="k-dash-jadwal-list" class="relative z-10 space-y-3">
-                  <!-- Jadwal akan disuntik dari script -->
-              </div>
-          </div>
-          <!-- MULTI-JOB PROGRESS VIEW -->
-          <div id="k-dash-multi-job" class="hidden mb-6 md:mb-8 max-w-xl mx-auto bg-black/40 border border-slate-700 p-4 md:p-5 rounded-2xl text-left shadow-lg">
-          </div>
-
-
-          <div id="k-dash-catatan-box" class="hidden mb-8 max-w-xl mx-auto bg-sky-900/20 border border-sky-500/30 p-5 rounded-2xl text-center shadow-lg">
-              <p class="text-xs text-sky-400 font-bold uppercase mb-2 tracking-widest"><i class="fas fa-envelope-open-text mr-1"></i><span data-lang="ui.admin_eval_msg"> Pesan / Evaluasi dari Admin:</span></p>
-              <p id="k-dash-catatan-ext" class="text-sm text-slate-200 italic font-medium">"-"</p>
-          </div>
-
-          <div class="mb-6 md:mb-8 flex flex-col sm:flex-row gap-3 justify-center items-center">
-             <button onclick="bukaDigitalCV(currentKandidatId)" class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-full font-bold shadow-lg hover:scale-105 transition text-sm w-full sm:w-auto"><i class="fas fa-user-circle mr-2 text-sky-400 text-base"></i> <span data-lang="button.view_cv">Lihat Profil Digital CV Saya</span></button>
-          </div>
-
-          <div class="mb-6 md:mb-8 bg-gradient-to-r from-sky-950 to-indigo-950 border border-sky-500/30 p-5 md:p-8 rounded-[2rem] shadow-xl relative overflow-hidden text-left">
-             <div class="absolute -right-6 -top-10 text-sky-500/10 text-[10rem]"><i class="fas fa-rocket"></i></div>
-             <div class="relative z-10">
-                <h3 class="text-xl font-black text-sky-300 mb-2 tracking-wide"><i class="fas fa-bolt mr-2 text-amber-400"></i><span data-lang="ui.update_profile"> UPDATE PROFIL</span></h3>
-                <p class="text-sm text-slate-300 mb-5 leading-relaxed max-w-lg" data-lang="ui.cv_type_hint">Gunakan <b>CV Mini</b> untuk profil singkat Anda. Gunakan <b>CV Master</b> yang formatnya lebih lengkap jika diperlukan oleh Kaisha/User.</p>
-                <div class="mt-6 p-1 rounded-[1.5rem] bg-gradient-to-r from-sky-500/30 to-emerald-500/30 border border-slate-700/50 shadow-xl">
-                    <div class="bg-[#0f172a] rounded-[1.3rem] p-5 md:p-7">
-                        <h3 class="text-sm md:text-base font-black text-white mb-4 tracking-wide uppercase"><i class="fas fa-satellite-dish mr-2 text-sky-400 animate-pulse"></i><span data-lang="ui.app_status_latest"> Status Lamaran Terkini</span></h3>
-                        <div id="k-dash-riwayat" class="space-y-3 custom-scrollbar overflow-y-auto max-h-[300px] pr-2">
-                            <!-- Isi Riwayat Lamaran akan disuntik otomatis dari Spreadsheet -->
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-5">
-                   <button data-action="bukaModalCvMini" class="w-full px-3 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(118,185,0,0.5)] hover:-translate-y-1 transition whitespace-nowrap"><i class="fas fa-user-edit mr-1.5"></i><span data-lang="ui.update_cv_mini"> Update CV Mini</span></button>
-                   <button data-action="bukaSimulatorInterview" class="w-full px-3 py-3 bg-violet-600 hover:bg-violet-500 border border-violet-400/50 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(124,58,237,0.5)] hover:-translate-y-1 transition whitespace-nowrap"><i class="fas fa-microphone-alt mr-1.5"></i><span data-lang="ui.interview_practice"> Latihan Interview</span></button>
-                   <button data-action="bukaModalTtd" class="w-full px-3 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(225,29,72,0.4)] hover:-translate-y-1 transition whitespace-nowrap"><i class="fas fa-signature mr-1.5"></i><span data-lang="ui.esign_naitei"> E-Sign & Data Naitei</span></button>
-                   <button id="btn-ai-cv-master" data-action="bukaMasterEksternal" class="w-full px-3 py-3 bg-amber-600 hover:bg-amber-500 border border-amber-400/50 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition whitespace-nowrap"><i class="fas fa-robot mr-1.5"></i><span data-lang="ui.ai_cv_assistant"> AI CV Master Assistant</span></button>
-                   <button data-action="bukaMasterLengkapPortal" class="w-full px-3 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition whitespace-nowrap"><i class="fas fa-clipboard-list mr-1.5 text-sky-400"></i><span data-lang="ui.master_full_form"> Form Master Lengkap</span></button>
-                   <button data-action="bukaPreviewCV" class="w-full px-3 py-3 bg-slate-200 hover:bg-white text-slate-900 rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition whitespace-nowrap"><i class="fas fa-file-alt mr-1.5 text-red-600"></i><span data-lang="ui.cv_design_preview"> Preview Desain CV</span></button>
-                   <button data-action="bukaModalGantiPass" class="w-full px-3 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition whitespace-nowrap"><i class="fas fa-key mr-1.5"></i><span data-lang="ui.change_password"> Ganti Password</span></button>
-                </div>
-             </div>
-          </div>
-          
-          <div id="area-revisi" class="hidden bg-red-950 border border-red-500/40 rounded-[2rem] p-5 md:p-6 mb-6 md:mb-8 text-left">
-             <h3 class="text-red-400 font-bold mb-2 text-lg"><i class="fas fa-exclamation-triangle mr-2"></i> <span data-lang="candidate.doc_revise_title">Dokumen Perlu Direvisi</span></h3>
-             <p class="text-sm text-slate-300 mb-5" id="k-dash-catatan" data-lang="candidate.doc_revise_desc">Silakan perbaiki dan upload ulang.</p>
-             <input type="file" id="file-revisi" accept=".pdf,.xls,.xlsx,.jpg,.png" onchange="cekUploadFile(this, { maxMb: 3 })" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2.5 file:px-5 file:rounded-full file:border-0 file:font-bold file:bg-red-600/20 file:text-red-300 hover:file:bg-red-600/40 cursor-pointer mb-4 transition-colors">
-             <button data-action="prosesUploadRevisi" id="btn-revisi" class="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-bold shadow-lg transition-colors" data-lang="button.upload_revise">Upload File Revisi</button>
-          </div>
-
-          <div id="btn-pemberkasan-area" class="hidden mb-8 max-w-xl mx-auto">
-              <!-- RINGKASAN PROGRES PEMBERKASAN: x/17 dokumen + status biodata -->
-              <div class="bg-black/60 border border-emerald-500/30 rounded-[2rem] p-5 mb-4 text-left">
-                  <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
-                      <h4 class="text-sm font-black text-emerald-400 uppercase tracking-widest"><i class="fas fa-tasks mr-1.5"></i><span data-lang="ui.berkas_progress"> Progres Pemberkasan</span></h4>
-                      <span id="prog-berkas-persen" class="text-lg font-black text-white">0%</span>
-                  </div>
-                  <div class="h-2.5 bg-slate-800 rounded-full overflow-hidden mb-3">
-                      <div id="prog-berkas-bar" class="h-full bg-gradient-to-r from-emerald-600 to-sky-500 rounded-full transition-[width] duration-500" style="width:0%"></div>
-                  </div>
-                  <div class="flex flex-wrap items-center gap-2 mb-4">
-                      <span id="prog-berkas-txt" class="text-xs font-bold text-white">0/17 dokumen</span>
-                      <span id="prog-biodata-badge" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">Biodata: ?</span>
-                  </div>
-                  <div id="prog-berkas-list" class="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto custom-scrollbar pr-1">
-                      <!-- item checklist akan di-render JS -->
-                  </div>
-              </div>
-              <button onclick="bukaModalPemberkasan(currentKandidatWa)" class="w-full py-4 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white rounded-[1.5rem] font-black shadow-[0_0_20px_rgba(90,141,0,0.4)] hover:-translate-y-1 transition text-sm md:text-base border border-emerald-400/30 text-center">
-                  <i class="fas fa-folder-open mr-2 text-base md:text-lg"></i><span data-lang="ui.complete_berkas_biodata"> LENGKAPI PEMBERKASAN & BIODATA
-              </span></button>
-              <p class="text-sm text-emerald-400 mt-3 font-bold animate-pulse text-center"><i class="fas fa-info-circle mr-1"></i><span data-lang="ui.berkas_stage_hint"> Anda telah memasuki tahap Pemberkasan!</span></p>
-          </div>
-
-          <button data-action="changePage" data-action-arg='["public"]' class="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-full font-bold shadow-lg hover:scale-105 transition text-sm w-full sm:w-auto" data-lang="button.view_public_jobs">Lihat Lowongan Kerja Publik</button>
-       </div>
-    </div>
-<!--KANDIDAT_DASHBOARD_END-->
   </main>
 
 <!--FOOTER_START-->
@@ -1169,16 +793,16 @@
 // tersimpan — persis keluhan "upload kok gak berhasil" setelah tiap deploy).
 // Sekarang: kalau global-loader sedang tampil (upload/simpan berjalan),
 // tunggu sampai idle (maks 60x1s) sebelum reload.
-setTimeout(function(){var E="app-e1672c281c";try{if(sessionStorage.getItem('asj_ac_v')===E)return;if(!navigator.serviceWorker||!navigator.serviceWorker.controller)return;caches.match("/assets/"+E+".js").then(function(r){if(!r){var tries=0;(function whenIdle(){var ld=document.getElementById('global-loader');var busy=ld&&ld.style.display&&ld.style.display!=='none';if(busy&&tries<60){tries++;setTimeout(whenIdle,1000);return}sessionStorage.setItem('asj_ac_v',E);console.log("[anti-cache] Stale SW, force reload...");navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(reg){reg.unregister()});location.reload(true)})})()}}).catch(function(){})}catch(e){}},2000);
+setTimeout(function(){var E="app-5756b589d2";try{if(sessionStorage.getItem('asj_ac_v')===E)return;if(!navigator.serviceWorker||!navigator.serviceWorker.controller)return;caches.match("/assets/"+E+".js").then(function(r){if(!r){var tries=0;(function whenIdle(){var ld=document.getElementById('global-loader');var busy=ld&&ld.style.display&&ld.style.display!=='none';if(busy&&tries<60){tries++;setTimeout(whenIdle,1000);return}sessionStorage.setItem('asj_ac_v',E);console.log("[anti-cache] Stale SW, force reload...");navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(reg){reg.unregister()});location.reload(true)})})()}}).catch(function(){})}catch(e){}},2000);
 </script>
 <!-- /ANTI-CACHE -->
-<script src="/assets/app-e1672c281c.js"></script>
+<script src="/assets/app-5756b589d2.js"></script>
 <!-- FIX 2026-08-12: admin TIDAK memakai lazy-load vendor renderer. Admin panel
-       adalah kerja verifikasi data (preview berkas kandidat terus-menerus) —
+       adalah kerja verifikasi data (preview berkas kandidat terus-menerus) â€”
        tunggu diam-diam saat script dimuat membuat admin ragu apakah data sudah
        termuat / preview error; muat eager. HANYA xlsx yang dibutuhkan (render
        CSV via renderExcelKeFrame): docx/pptx dirute ke MS Office viewer dan
-       renderDocxKeFrame/renderPptxKeDiv sudah dihapus (dead code) — mammoth &
+       renderDocxKeFrame/renderPptxKeDiv sudah dihapus (dead code) â€” mammoth &
        pptx-preview (2MB) tidak dimuat lagi. index.html (sisi kandidat) tetap
        lazy via muatVendorLib 02_init.js. -->
   <script src="/vendor/xlsx.full.min.js?v=7f749f81a4"></script>
