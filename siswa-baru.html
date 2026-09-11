@@ -5,7 +5,7 @@
   <base target="_top">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self' https:; connect-src 'self' https:; frame-src 'none'; object-src 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self' https:; connect-src 'self' https:; frame-src 'none'; object-src 'none';">
   <title>ASJ - Pendaftaran Siswa (AI Assistant)</title>
   <link rel="manifest" href="/manifest.webmanifest?v=8f163ba13c">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=b90abf8d0a">
@@ -39,6 +39,7 @@
   </style>
   <link rel="stylesheet" crossorigin href="/assets/main.css?v=ed681b7b61">
 </head><body data-page="siswa-baru" class="flex flex-col md:flex-row h-screen w-full relative" onload="initApp()">
+<noscript><div style="padding:2rem;text-align:center;color:#f8fafc;background:#020617;min-height:100vh;display:flex;align-items:center;justify-content:center"><div><h1 style="font-size:1.5rem;margin-bottom:1rem">JavaScript Diperlukan</h1><p style="color:#94a3b8">Halaman ini membutuhkan JavaScript untuk berfungsi. Silakan aktifkan JavaScript di browser Anda.</p><a href="/" style="color:#f59e0b;text-decoration:underline;margin-top:1rem;display:inline-block">Kembali ke Portal</a></div></div></noscript>
 <!--THEME_INIT_START-->
 <script>try{var _t=localStorage.getItem('asj_theme');document.body.classList.add(_t==='SAKURA'?'theme-light':'theme-dark')}catch(e){document.body.classList.add('theme-dark')}</script>
 <!--THEME_INIT_END-->
@@ -75,7 +76,8 @@
 
     <div class="p-3 bg-slate-950 border-t border-slate-800 flex gap-2">
       <input type="text" id="userInput" class="flex-1 bg-slate-800 text-xs text-white px-4 py-2.5 rounded-xl border border-slate-700 focus:outline-none focus:border-amber-500 transition-colors" placeholder="Ketik balasanmu di sini…" onkeypress="handleEnter(event)">
-      <button type="button" id="sendBtn" onclick="sendMessage()" aria-label="Kirim" data-lang-aria="ui.send" class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2.5 rounded-xl transition shadow-[0_4px_10px_0_rgba(245,158,11,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"><i class="fas fa-paper-plane"></i></button>
+      <button type="button" id="sendBtn" onclick="sendMessage()" aria-label="Kirim" 
+class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2.5 rounded-xl transition shadow-[0_4px_10px_0_rgba(245,158,11,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"><i class="fas fa-paper-plane"></i></button>
     </div>
   </div>
 
