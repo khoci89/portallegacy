@@ -34,7 +34,7 @@ Permissions-Policy = "camera=(), microphone=(), geolocation=()"
 [[headers]]
 for = "/*.html"
 [headers.values]
-Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://gdwvffmevwtwnzrapjwy.supabase.co https://*.cloudinary.com; connect-src 'self' https://gdwvffmevwtwnzrapjwy.supabase.co wss://*.supabase.co https://api.cloudinary.com; frame-src https://*.supabase.co https://res.cloudinary.com; frame-ancestors 'self'"
+Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://browser.sentry-cdn.com https://us-assets.i.posthog.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://gdwvffmevwtwnzrapjwy.supabase.co https://*.cloudinary.com https://i.imgflip.com; connect-src 'self' https://gdwvffmevwtwnzrapjwy.supabase.co wss://*.supabase.co https://api.cloudinary.com https://*.sentry.io https://us.i.posthog.com https://*.googleapis.com https://*.firebaseio.com; frame-src https://*.supabase.co https://res.cloudinary.com; frame-ancestors 'self'"
 
 # --- Cache policy PWA: SELALU versi terbaru ---
 # sw.js & HTML: no-cache (revalidasi tiap load) supaya update service worker
