@@ -39,10 +39,39 @@ ADMIN (admin.html / mail)
 5. Form auto-fill dari `latestCandidateData` (localStorage)
 
 ### Auto-Translate
-- Setelah AI return data, `autoTranslateMissingJp(p.currentData)` jalan
-- Cek 24 ID→JP pairs (termasuk array fields)
-- Jika `_id` ada tapi `_jp` kosong → Gemini translate
-- Translated JP fields di-merge kembali ke response
+- Setelah AI return data, `autoTranslateMissingJp(p.currentData, forcePaths, aiData)` jalan
+- Registry pasangan: **`netlify/functions/_lib/ai/jp-fields.ts`** — SATU sumber untuk
+  `chat.ts` (`JP_FIELD_PAIRS` = **25** pasangan nested) dan `actions-master.ts`
+  (`JP_TRANSLATE_MAP`, diturunkan dari `formKey`/`jpCol`). Array
+  (pendidikan/pekerjaan/keluarga) lewat `ARRAY_FIELD_PAIRS` = 6 pasangan.
+- **Dua kelas field ikut batch (1 panggilan Gemini, delimiter `###`):**
+  1. `_jp` masih kosong → diisi;
+  2. `_jp` yang model ubah di balasan ini (`forcePaths`) → **diterjemahkan ulang**.
+- **Hasil batch SELALU menang** atas nilai `_jp` dari model. Model chat mengerjakan
+  dua hal sekaligus dan terbukti bisa menaruh terjemahan kolom LAIN di kolom yang
+  salah (mis. `motivasi_jp` diisi teks `tujuan_ke_jepang`) — dulu nilai model
+  dianggap final, jadi kolomnya terisi tapi SALAH.
+- **Sumber nilai = GABUNGAN** `currentData` + balasan model:
+  `_id`: currentData dulu, fallback balasan model → `_id` yang BARU diisi model
+  ("hobi saya sepak bola") ikut diterjemahkan di giliran yang SAMA;
+  `_jp`: currentData dulu, fallback balasan model → nilai yang sudah terisi
+  (mis. kanji eksak hasil snap) tidak ditimpa terjemahan bebas.
+- **Prefill deterministik**: `riwayat_jepang` (dropdown) diisi kanji EKSAK dari
+  `RIWAYAT_JEPANG_PAIRS` (`shared/silsilah.ts`) TANPA panggilan Gemini; nilai di
+  luar dropdown tetap diterjemahkan lewat registry.
+- **Urutan wajib**: hitung `forcePaths` (nilai model asli) → `snapAiDataToRegistry` →
+  batch. Kalau snap jalan lebih dulu, kanji registry terlihat seperti "model
+  mengubah `_jp`" dan justru dipaksa masuk batch.
+- Guard `_id`: field yang SUDAH terisi dipulihkan byte-for-byte dari `currentData`;
+  field yang masih KOSONG menerima nilai baru dari model (auto-fill chat).
+- Translated JP fields di-merge kembali ke response.
+
+### State sync (JANGAN diubah tanpa alasan)
+`js/pages/ai-chat.ts` menerima `deps` dari `getChatDeps()` — itu objek SEMENTARA.
+`deps.latestCandidateData = ...` **tidak** menyentuh variabel modul `ai_form`, jadi
+hasil merge WAJIB ditulis lewat `deps.setLatestCandidateData(merged)` SEBELUM
+`updateFormUI()` / `saveToLocal()`. Tanpa itu form tidak pernah terisi dari balasan AI.
+
 
 ### Storage
 - `chatHistory` → localStorage (max 20 messages)

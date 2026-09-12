@@ -24,9 +24,9 @@ function deriveNestedPairs(): Array<{ idPath: string[]; jpPath: string[] }> {
 }
 
 describe('JP_FIELD_PAIRS — registry tunggal bilingual', () => {
-  it('memuat 24 pasangan nested (kontrak AI_ID_JP_PAIRS lama di chat.ts)', () => {
+  it('memuat 25 pasangan nested (24 lama + riwayat_jepang, kontrak AI_ID_JP_PAIRS chat.ts)', () => {
     const pairs = deriveNestedPairs();
-    expect(pairs).toHaveLength(24);
+    expect(pairs).toHaveLength(25);
     for (const p of pairs) {
       expect(p.idPath.length).toBeGreaterThan(0);
       expect(p.jpPath.length).toBe(p.idPath.length);
@@ -34,6 +34,17 @@ describe('JP_FIELD_PAIRS — registry tunggal bilingual', () => {
       expect(p.jpPath[p.jpPath.length - 1]).toMatch(/_jp$/);
       expect(p.idPath[p.idPath.length - 1]).not.toMatch(/_jp$/);
     }
+  });
+
+  it('riwayat_jepang ada di registry (kolom JP-nya ikut diterjemahkan, tanpa kolom master)', () => {
+    const pair = JP_FIELD_PAIRS.find(
+      (p) => p.idPath.join('.') === 'wawancara.riwayat_jepang',
+    );
+    expect(pair).toBeTruthy();
+    expect(pair!.jpPath.join('.')).toBe('wawancara.riwayat_jepang_jp');
+    // Nilainya hidup di ai_data_json (bukan tabel master) → tidak punya formKey.
+    expect(pair!.formKey).toBeUndefined();
+    expect(pair!.jpCol).toBeUndefined();
   });
 
   it('menurunkan JP_TRANSLATE_MAP persis 16 entri (kontrak lama actions-master.ts)', () => {

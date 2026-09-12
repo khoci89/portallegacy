@@ -52,6 +52,11 @@ export const JP_FIELD_PAIRS: JpFieldPair[] = [
   },
   { idPath: ['wawancara', 'keinginan_id'], jpPath: ['wawancara', 'keinginan_jp'], formKey: 'keinginan', jpCol: 'keinginan_pribadi_jp' },
   { idPath: ['wawancara', 'tujuan_ke_jepang'], jpPath: ['wawancara', 'tujuan_ke_jepang_jp'], formKey: 'tujuanJepang', jpCol: 'tujuan_ke_jepang_jp' },
+  // riwayat_jepang — dropdown "Pernah ke Jepang sebelumnya?". Nilai kanonikal
+  // (RIWAYAT_JEPANG_PAIRS di shared/silsilah.ts) diisi eksak oleh snap backend;
+  // nilai bebas di luar dropdown diterjemahkan Gemini lewat registry ini.
+  // Tanpa formKey/jpCol: kolom JP-nya tidak ada di master (hidup di ai_data_json).
+  { idPath: ['wawancara', 'riwayat_jepang'], jpPath: ['wawancara', 'riwayat_jepang_jp'] },
   // identitas
   { idPath: ['identitas', 'tempat_lahir'], jpPath: ['identitas', 'tempat_lahir_jp'], formKey: 'tempatLahir', jpCol: 'tempat_lahir_jp' },
   { idPath: ['identitas', 'agama'], jpPath: ['identitas', 'agama_jp'], formKey: 'agama', jpCol: 'agama_jp' },

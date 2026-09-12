@@ -73,12 +73,24 @@ describe('session — tamper detection', () => {
     expect(verifyToken(badToken)).toBeNull();
   });
 
-  it('wrong secret produces different signature', () => {
-    const token1 = signToken({ role: 'admin' });
-    // Since we can't change the secret in test, verify the token is unique
-    const token2 = signToken({ role: 'admin' });
-    // Both should verify to same payload (same secret)
-    expect(verifyToken(token1)).toEqual(verifyToken(token2));
+  it('secret sama + payload sama → token identik (deterministik, bukan bergantung jam)', () => {
+    // signToken menyematkan iat & exp dari Date.now(), jadi dua panggilan yang
+    // jatuh di milidetik berbeda menghasilkan payload (dan token) berbeda.
+    // Waktu di-freeze supaya tes ini menguji yang dimaksud — "secret sama ⇒
+    // payload sama" — bukan ketepatan jam. (Sebelumnya tes ini FLAKY: gagal
+    // ~1 dari 3 run karena token ditandatangani di milidetik berbeda.)
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+      const token1 = signToken({ role: 'admin' });
+      const token2 = signToken({ role: 'admin' });
+      // Kedua token harus verify ke payload yang sama...
+      expect(verifyToken(token1)).toEqual(verifyToken(token2));
+      // ...dan karena payload + secret identik, tokennya pun byte-identik.
+      expect(token1).toBe(token2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

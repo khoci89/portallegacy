@@ -1242,6 +1242,7 @@ export {
   MASTER_COLUMN_MISSING,
   buildAiOverflow,
   mergeAiOverflow,
+  buildMasterNested,
   JP_TRANSLATE_MAP,
   autoTranslateToJp,
 };

@@ -369,7 +369,29 @@ async function handleGetAppData(payload, sessionToken) {
         t &&
         t.role === role &&
         (mode !== 'kandidat' || (t.wa || '') === waPayload || waPayload === '');
-      if (!valid) {
+
+      // ADMIN DI MODE KANDIDAT — JANGAN anggap "sesi mati".
+      //
+      // Kasus nyata (bug "admin logout tiap selesai benerin CV kandidat"):
+      // panel admin membuka AI CV lewat JEMBATAN DI TAB YANG SAMA
+      // (generateAiFormBridge → window.location.href = ai_form.html), jadi
+      // halaman ai_form mewarisi localStorage ADMIN. Guard VIP di ai_form
+      // lalu memanggil getAppData('kandidat'); api-client memilih token
+      // ADMIN (karena admin_login='sukses'), sehingga `t.role==='admin'`
+      // sementara `role` yang diminta 'kandidat' → valid=false → di balas
+      // sessionInvalid → api-client MENGHAPUS SEMUA SESI + reload → admin
+      // ter-logout padahal token-nya masih sah & belum kedaluwarsa.
+      //
+      // Token admin yang sah & bukan token refresh BUKAN sesi mati: admin
+      // berwenang melihat data kandidat mana pun (pola yang sama sudah
+      // dipakai isOwnerOrAdmin() dan handleSubmitDataAsj yang menerima
+      // dua role). Perlakukan sebagai admin-view: tetap ambil data kandidat
+      // target, dan JANGAN sertakan sessionInvalid supaya sesi tidak
+      // dihapus frontend.
+      const isAdminView =
+        !valid && mode === 'kandidat' && t && t.role === 'admin' && t.kind !== 'refresh';
+
+      if (!valid && !isAdminView) {
         const pub0 = await loadPublicBase(mode);
         if (pub0.notFound) return { success: false, sessionInvalid: true, error: 'Backend tidak tersedia.' };
         return {
@@ -390,7 +412,14 @@ async function handleGetAppData(payload, sessionToken) {
     //
     // Wave 1 (5 paralel): publicBase + candidates + schedules + tugas + templates
     // Wave 2 (2 paralel, depends on wave 1): attachBerkasBio + findFormsLight
-    const w = mode === 'kandidat' ? normalizeWa(t.wa || '') : '';
+    // WA target: untuk kandidat normal dari TOKEN (signed, tidak bisa
+    // di-spoof). Untuk ADMIN di mode kandidat, token admin tidak punya wa —
+    // ambil dari payload (admin memang berwenang memilih kandidat mana).
+    const w =
+      mode === 'kandidat'
+        ? normalizeWa(t.wa || '') ||
+          normalizeWa(String((payload && payload[1]) || '').replace(/\D/g, ''))
+        : '';
     const wave1 = [loadPublicBase(mode)];
     if (mode === 'admin') {
       wave1.push(

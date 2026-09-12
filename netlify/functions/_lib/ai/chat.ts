@@ -16,14 +16,28 @@ import {
   JABATAN_PAIRS,
   KENALAN_PAIRS,
   GENDER_PAIRS,
+  RIWAYAT_JEPANG_PAIRS,
+  pairJpOf,
   snapId,
 } from '../../../../shared/silsilah';
 
 // ---------------------------------------------------------------------------
 // Auto-translate: isi field _jp yang kosong dari field _id (terjemahan ID→JP).
-// SATU panggilan Gemini per batch, dan hanya untuk field yang _jp-nya masih
-// kosong dan BELUM diisi balasan model (covered) — model-wins, tanpa hasil
-// translate yang dibuang (dulu memicu regresi latensi/panggilan kedua).
+// SATU panggilan Gemini per batch. Dua kelas field ikut batch:
+//   (a) _jp masih kosong  → diisi;
+//   (b) _jp yang model ubah di balasan ini (forcePaths) → diterjemahkan ulang.
+// Hasil batch SELALU menang atas nilai _jp dari model (lihat handleProcessAIChat)
+// — model chat mengerjakan dua hal sekaligus dan terbukti bisa menaruh
+// terjemahan kolom lain di kolom yang salah.
+//
+// Sumber nilai (2026-09-12): `data` = currentData (state form yang tersimpan),
+// `srcData` = balasan model di giliran ini. Keduanya dibaca sebagai GABUNGAN:
+//   - _id  : currentData dulu, fallback ke srcData → _id yang BARU diisi model
+//            ("hobi saya sepak bola") ikut diterjemahkan di giliran yang SAMA,
+//            tidak menunggu giliran berikutnya (dulu hobi_jp tetap kosong).
+//   - _jp  : currentData dulu, fallback ke srcData → nilai yang sudah terisi di
+//            salah satunya dianggap beres (mis. kanji eksak hasil snap registry)
+//            dan tidak ditimpa terjemahan bebas, kecuali diminta forcePaths.
 // ---------------------------------------------------------------------------
 function getNested(obj: any, path: string[]): string {
   let cur = obj;
@@ -37,31 +51,57 @@ function getNested(obj: any, path: string[]): string {
 function setNested(obj: any, path: string[], val: string): void {
   let cur = obj;
   for (let i = 0; i < path.length - 1; i++) {
-    if (!cur[path[i]] || typeof cur[path[i]] !== 'object') cur[path[i]] = {};
-    cur = cur[path[i]];
+    const key = path[i];
+    // Kalau segmen berikutnya numerik (pendidikan.0.sekolah_jp), buat ARRAY —
+    // bukan objek. Dulu selalu {} sehingga hasil translate kolom array
+    // (pendidikan/pekerjaan/keluarga) jadi {"0": {...}} dan frontend membacanya
+    // sebagai objek, bukan array → baris riwayat kosong/tidak terisi.
+    if (!cur[key] || typeof cur[key] !== 'object') {
+      cur[key] = /^\d+$/.test(path[i + 1]) ? [] : {};
+    }
+    cur = cur[key];
   }
   cur[path[path.length - 1]] = val;
 }
 
 async function autoTranslateMissingJp(
   data: Record<string, any>,
-  covered: Set<string> = new Set(),
+  forcePaths: Set<string> = new Set(),
+  srcData?: Record<string, any>,
 ): Promise<string[]> {
+  // Baca gabungan currentData + balasan model (lihat komentar di atas fungsi).
+  const idFrom = (path: string[]): string => {
+    const own = getNested(data, path).trim();
+    if (own) return own;
+    return srcData ? getNested(srcData, path).trim() : '';
+  };
+  const jpFrom = (path: string[]): string => {
+    const own = getNested(data, path).trim();
+    if (own) return own;
+    return srcData ? getNested(srcData, path).trim() : '';
+  };
   const pairs: Array<{ index: number; idText: string; jpPath: string[] }> = [];
   for (let i = 0; i < AI_ID_JP_PAIRS.length; i++) {
     const pair = AI_ID_JP_PAIRS[i];
-    const idVal = getNested(data, pair.idPath).trim();
-    const jpVal = getNested(data, pair.jpPath).trim();
-    if (idVal && !jpVal && !covered.has(pair.jpPath.join('.'))) {
+    const idVal = idFrom(pair.idPath);
+    const jpVal = jpFrom(pair.jpPath);
+    if (idVal && (!jpVal || forcePaths.has(pair.jpPath.join('.')))) {
       pairs.push({ index: pairs.length, idText: idVal, jpPath: pair.jpPath });
     }
   }
   for (const afp of ARRAY_FIELD_PAIRS) {
     const arr = Array.isArray(data[afp.type]) ? data[afp.type] : [];
-    for (let i = 0; i < arr.length; i++) {
-      const idVal = String((arr[i] && arr[i][afp.idKey]) || '').trim();
-      const jpVal = String((arr[i] && arr[i][afp.jpKey]) || '').trim();
-      if (idVal && !jpVal && !covered.has(afp.type + '.' + i + '.' + afp.jpKey)) {
+    const srcArr = srcData && Array.isArray(srcData[afp.type]) ? srcData[afp.type] : [];
+    // Baris BARU yang hanya ada di balasan model (index >= panjang currentData)
+    // tetap ikut diterjemahkan — dulu loop berhenti di panjang currentData
+    // sehingga baris riwayat baru pulang tanpa kolom JP.
+    const len = Math.max(arr.length, srcArr.length);
+    for (let i = 0; i < len; i++) {
+      const row = arr[i] || {};
+      const srcRow = srcArr[i] || {};
+      const idVal = String(row[afp.idKey] || srcRow[afp.idKey] || '').trim();
+      const jpVal = String(row[afp.jpKey] || srcRow[afp.jpKey] || '').trim();
+      if (idVal && (!jpVal || forcePaths.has(afp.type + '.' + i + '.' + afp.jpKey))) {
         pairs.push({
           index: pairs.length,
           idText: idVal,
@@ -87,6 +127,23 @@ async function autoTranslateMissingJp(
     }
   }
   return filled;
+}
+
+// ---------------------------------------------------------------------------
+// Pasangan DROPDOWN yang kanjinya EKSAK dari registry — bukan terjemahan bebas.
+// Diisi sebelum batch supaya Gemini tidak menerjemahkan ulang nilai dropdown
+// (mis. "BELUM PERNAH" → kalimat bebas, padahal registry sudah menetapkan
+// 未経験). Nilai di luar daftar TIDAK masuk sini → tetap diterjemahkan Gemini
+// lewat registry jp-fields.ts.
+// ---------------------------------------------------------------------------
+function deterministicJpFor(data: Record<string, any>): Record<string, string> {
+  const out: Record<string, string> = {};
+  const w = data && data.wawancara;
+  if (w && typeof w === 'object') {
+    const jp = pairJpOf(RIWAYAT_JEPANG_PAIRS, String(w.riwayat_jepang || ''));
+    if (jp) out['wawancara.riwayat_jepang_jp'] = jp;
+  }
+  return out;
 }
 
 // ai/chat.js — domain AI chat & wawancara: Qween Jeklin (chat kandidat master),
@@ -349,45 +406,85 @@ function resolveSnapIdValue(
     } catch (e) {
       /* bukan JSON — balas teks biasa */
     }
-    // Auto-translate: isi field _jp yang kosong dari field _id. Jalan SELALU
-    // (tidak hanya kalau model patuh format JSON) — kalau kandidat minta
-    // terjemahan dan model malah balas teks ("Jeklin sedang menerjemahkan…"),
-    // semua kolom JP yang kosong tetap diisi. HANYA SATU batch Gemini, dan hanya
-    // untuk field yang balasan model BELUM isi — nilai _jp model tidak pernah
-    // ditimpa (model-wins), tanpa panggilan kedua yang sia-sia.
+    // Auto-translate: isi field _jp dari field _id. Jalan SELALU (tidak hanya
+    // kalau model patuh format JSON) — kalau kandidat minta terjemahan dan model
+    // malah balas teks ("Jeklin sedang menerjemahkan…"), kolom JP yang kosong
+    // tetap terisi.
+    //
+    // Dua langkah:
+    //   (1) PREFILL DETERMINISTIK — nilai dropdown (riwayat_jepang) diisi kanji
+    //       eksak dari registry, tidak diserahkan ke terjemahan bebas Gemini.
+    //   (2) SATU batch Gemini — untuk field _jp kosong PLUS field yang model
+    //       ubah di balasan ini (forcePaths). Hasil batch SELALU menang atas
+    //       nilai _jp dari model: model chat mengerjakan dua hal sekaligus dan
+    //       terbukti bisa menaruh terjemahan kolom LAIN di kolom yang salah
+    //       (mis. motivasi_jp diisi teks tujuan_ke_jepang) — dan karena nilai
+    //       model dulu dianggap final, kolom itu terisi tapi salah isi.
+    //       Bila batch gagal untuk satu item, nilai model tetap dipakai
+    //       (fallback aman) karena hanya item berhasil yang ditulis.
     const modelSentJson = aiData !== undefined;
-    const covered = new Set<string>();
+    const deterministic = deterministicJpFor(p.currentData);
+    for (const [jpPath, jp] of Object.entries(deterministic)) {
+      setNested(p.currentData, jpPath.split('.'), jp);
+    }
+    // Field yang model isi/ubah _jp-nya di balasan ini → wajib diterjemahkan
+    // ulang oleh batch, bukan dipercaya apa adanya. Field yang model cuma
+    // mengulang nilai lama (modelVal === storedVal) tidak ikut → tanpa biaya
+    // ekstra di giliran biasa.
+    const forcePaths = new Set<string>();
     if (aiData) {
       for (const pair of AI_ID_JP_PAIRS) {
-        if (getNested(aiData, pair.jpPath)) covered.add(pair.jpPath.join('.'));
+        const key = pair.jpPath.join('.');
+        if (deterministic[key]) continue;
+        const modelVal = getNested(aiData, pair.jpPath);
+        if (modelVal && modelVal !== getNested(p.currentData, pair.jpPath)) forcePaths.add(key);
       }
       for (const afp of ARRAY_FIELD_PAIRS) {
         const arr = Array.isArray(aiData[afp.type]) ? aiData[afp.type] : [];
+        const origArr = Array.isArray(p.currentData[afp.type]) ? p.currentData[afp.type] : [];
         for (let i = 0; i < arr.length; i++) {
-          if (arr[i] && arr[i][afp.jpKey]) covered.add(afp.type + '.' + i + '.' + afp.jpKey);
+          const modelVal = String((arr[i] && arr[i][afp.jpKey]) || '').trim();
+          const storedVal = String((origArr[i] && origArr[i][afp.jpKey]) || '').trim();
+          if (modelVal && modelVal !== storedVal) forcePaths.add(afp.type + '.' + i + '.' + afp.jpKey);
         }
       }
     }
-    const translatedPaths = await autoTranslateMissingJp(p.currentData, covered);
+    // Snap nilai silsilah/pekerjaan ke registry SEBELUM batch — dua alasan:
+    //   (a) _id yang di-snap ("kakak laki2" → KAKAK LAKI-LAKI) adalah bentuk
+    //       yang diterjemahkan batch, bukan teks mentah model;
+    //   (b) kanji eksak yang diisi snap dianggap "sudah terisi" oleh batch
+    //       (lihat jpFrom) sehingga tidak ditimpa terjemahan bebas.
+    // Urutan wajib: forcePaths DULU (nilai model asli), baru snap — kalau snap
+    // jalan lebih dulu, kanji registry akan terlihat seperti "model mengubah
+    // _jp" dan justru dipaksa masuk batch.
+    if (modelSentJson && aiData) snapAiDataToRegistry(aiData);
+    const translatedPaths = await autoTranslateMissingJp(p.currentData, forcePaths, aiData);
     if (translatedPaths.length) {
       if (!aiData) aiData = {};
       for (const jpPath of translatedPaths) {
         const jpVal = getNested(p.currentData, jpPath.split('.'));
         if (!jpVal) continue;
-        // model-wins: jangan menimpa _jp yang sudah model isi di balasan JSON.
-        if (modelSentJson && getNested(aiData, jpPath.split('.'))) continue;
         setNested(aiData, jpPath.split('.'), jpVal);
       }
     }
-    // Snap nilai silsilah/pekerjaan ke registry SEBELUM guard _id — supaya
-    // _id yang di-snap (mis. "kakak laki2" → KAKAK LAKI-LAKI) dikenali guard
-    // sebagai nilai yang sah, dan kanji pasangan ikut terisi eksak.
-    if (modelSentJson && aiData) snapAiDataToRegistry(aiData);
+    // Nilai dropdown deterministik ikut dikirim walau model tidak menyentuhnya,
+    // supaya kolom JP-nya pasti terisi di form.
+    if (Object.keys(deterministic).length) {
+      if (!aiData) aiData = {};
+      for (const [jpPath, jp] of Object.entries(deterministic)) {
+        setNested(aiData, jpPath.split('.'), jp);
+      }
+    }
     if (modelSentJson && aiData) {
-      // Deterministic guard (hanya saat model mengirim JSON): _id apa pun yang
-      // model kembalikan di aiData harus sama persis (byte-for-byte) dengan
-      // original di p.currentData. Kalau model memparafrase/memendek _id pada
-      // giliran translate, restore dari currentData. Hanya _jp yang boleh berubah.
+      // Deterministic guard (hanya saat model mengirim JSON): _id yang SUDAH
+      // TERISI harus sama persis (byte-for-byte) dengan original di
+      // p.currentData. Kalau model memparafrase/memendek _id pada giliran
+      // translate, restore dari currentData. Hanya _jp yang boleh berubah.
+      // Field yang MASIH KOSONG justru sebaliknya: nilai baru dari model
+      // DITERIMA — itu inti fitur auto-fill dari chat ("hobi saya sepak bola").
+      // Dulu guard juga mengosongkan field kosong (`inAi !== origId` dengan
+      // origId ''), sehingga AI TIDAK PERNAH bisa mengisi 24 field registry
+      // yang belum ada isinya.
       // Saat model balas prosa, aiData sengaja hanya berisi _jp hasil batch
       // (tanpa _id) — tidak ada _id yang bisa berubah, guard tidak dijalankan.
       // Field silsilah/pekerjaan tidak di-guard byte-for-byte murni: nilai
@@ -410,7 +507,7 @@ function resolveSnapIdValue(
           if (resolved !== inAi) setNested(aiData, pair.idPath, resolved);
           continue;
         }
-        if (inAi !== origId) setNested(aiData, pair.idPath, origId);
+        if (origId && inAi !== origId) setNested(aiData, pair.idPath, origId);
       }
       // Array fields guard: same contract — restore _id for each array row.
       for (const afp of ARRAY_FIELD_PAIRS) {
@@ -426,12 +523,17 @@ function resolveSnapIdValue(
               : afp.idKey === 'jabatan_id' ? JABATAN_PAIRS : PEKERJAAN_PAIRS;
             const resolved = resolveSnapIdValue(pairsFor, origId, inAi, SNAP_STRICT.has(afp.idKey));
             if (resolved !== inAi) arr[i][afp.idKey] = resolved;
-          } else if (inAi && inAi !== origId) {
+          } else if (origId && inAi !== origId) {
+            // Kontrak sama dengan field non-array: _id yang SUDAH terisi tidak
+            // boleh diubah model (termasuk dikembalikan sebagai string kosong —
+            // dulu syaratnya `inAi && inAi !== origId` sehingga _id kosong tidak
+            // dipulihkan). Field yang masih kosong tetap menerima nilai baru.
             arr[i][afp.idKey] = origId;
           }
         }
       }
     }
+    console.log('[AI] processAIChat returning aiData:', JSON.stringify(aiData || {}));
     return { reply, data: aiData || {} };
   } catch (e) {
     // Jangan bocorkan detail error mentah ke user — log detailnya di server saja.

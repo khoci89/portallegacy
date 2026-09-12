@@ -332,9 +332,19 @@ if (existsSync(modPath)) {
   const modContent = readFileSync(modPath, 'utf8').replace(/\r\n/g, '\n');
   modHash = '-m' + createHash('sha1').update(modContent).digest('hex').slice(0, 8);
 }
-sw = sw.replace(/const VERSION = '[^']*';/, `const VERSION = 'asj-portal-app-${hash}${modHash}';`);
+// CACHE_EPOCH — tombol "paksa semua klien lama ikut update".
+// Hash di atas HANYA berubah kalau konten modul berubah, jadi rebuild dari
+// source yang sama menghasilkan VERSION identik. Akibatnya klien yang masih
+// memegang SW/cache LAMA (mis. sempat nyangkut sebelum bug diperbaiki) tidak
+// pernah dibujuk refresh — mereka hanya dapat versi baru kalau kebetulan
+// reload. Naikkan angka ini secara manual kapan pun perubahan WAJIB sampai
+// ke SEMUA klien lama tanpa mereka perlu berbuat apa-apa.
+// Aturan: kalau diubah, sertakan di commit message ("chore: bump cache epoch N").
+const CACHE_EPOCH = 2;
+const versionStr = `asj-portal-app-${hash}${modHash}-e${CACHE_EPOCH}`;
+sw = sw.replace(/const VERSION = '[^']*';/, `const VERSION = '${versionStr}';`);
 writeFileSync(swPath, sw);
-console.log(`[build-js] sw.js: VERSION asj-portal-app-${hash}${modHash}`);
+console.log(`[build-js] sw.js: VERSION ${versionStr}`);
 
 // 5. Hapus bundel lama (assets/app-*.js + sourcemap-nya, selain yang baru).
 for (const f of readdirSync(`${ROOT}/assets`)) {

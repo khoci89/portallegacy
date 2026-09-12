@@ -81,7 +81,7 @@ self.addEventListener('notificationclick', function (event) {
   );
 });
 
-const VERSION = 'asj-portal-app-5756b589d2-mfa547b24';
+const VERSION = 'asj-portal-app-5756b589d2-mfa547b24-e2';
 const SHELL = [
   '/',
   '/index.html',

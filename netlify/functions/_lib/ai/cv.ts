@@ -172,7 +172,6 @@ async function handleGetAdminAiContext(payload, sessionToken) {
       if (cand) row = await findMasterByWa(String(cand.no_wa || ''));
     }
     if (!row) return { success: true, data: null };
-    // @ts-expect-error JS→TS migration
     return { success: true, data: buildMasterNested(row) };
   } catch (e) {
     return { success: false, error: 'Terjadi kesalahan saat mengambil data kandidat.' };

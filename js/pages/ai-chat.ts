@@ -20,6 +20,11 @@ export interface ChatDeps {
   saveToLocal: () => void;
   mergeCandidateData: (a: Record<string, any>, b: any) => Record<string, any>;
   updateFormUI: () => void;
+  // Tulis balik data hasil merge ke state modul ai_form. WAJIB: `deps` cuma
+  // objek sementara dari getChatDeps(), jadi `deps.latestCandidateData = ...`
+  // TIDAK menyentuh variabel modul — updateFormUI()/saveToLocal() akan membaca
+  // state lama dan form tidak pernah terisi dari balasan AI.
+  setLatestCandidateData: (data: Record<string, any>) => void;
 }
 
 export function appendHTML(sender: string, text: string, deps: ChatDeps) {
@@ -77,12 +82,12 @@ export function appendHTML(sender: string, text: string, deps: ChatDeps) {
   }
 }
 
-export function sendMessage(deps: ChatDeps) {
+export function sendMessage(deps: ChatDeps): Promise<void> {
   var inputEl = deps.$('userInput') as HTMLInputElement;
   var btnEl = deps.$('sendBtn') as HTMLButtonElement;
-  if (!inputEl || !btnEl) return;
+  if (!inputEl || !btnEl) return Promise.resolve();
   var text = inputEl.value.trim();
-  if (!text) return;
+  if (!text) return Promise.resolve();
 
   appendHTML('user', text, deps);
   inputEl.value = '';
@@ -107,7 +112,7 @@ export function sendMessage(deps: ChatDeps) {
     lang: typeof window.CURRENT_LANG !== 'undefined' ? window.CURRENT_LANG : 'id',
   };
 
-  withRetry(function () {
+  return withRetry(function () {
     return window.callAPI('processAIChat', payloadToAI);
   }, 2, 2000)
     .then(function (res) {
@@ -140,7 +145,11 @@ export function sendMessage(deps: ChatDeps) {
         });
       }
       if (res.data) {
-        deps.latestCandidateData = deps.mergeCandidateData(deps.latestCandidateData, res.data);
+        const merged = deps.mergeCandidateData(deps.latestCandidateData, res.data);
+        deps.latestCandidateData = merged;
+        // Sync ke state modul SEBELUM updateFormUI()/saveToLocal() — keduanya
+        // membaca variabel modul ai_form, bukan objek deps ini.
+        deps.setLatestCandidateData(merged);
         deps.updateFormUI();
       }
       deps.saveToLocal();

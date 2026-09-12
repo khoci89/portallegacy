@@ -164,6 +164,31 @@ describe('handleAction — dispatch level integration', () => {
     expect(result.error).toBeTruthy();
   });
 
+  // --- getAppData: admin token in CANDIDATE mode → must NOT be sessionInvalid ---
+  //
+  // REGRESI (bug "admin logout tiap selesai benerin CV kandidat"):
+  // panel admin membuka AI CV lewat bridge di TAB YANG SAMA, jadi halaman
+  // ai_form mewarisi localStorage admin dan memanggil getAppData('kandidat')
+  // dengan token ADMIN. Dulu itu dianggap sesi mati (role mismatch) →
+  // sessionInvalid:true → api-client menghapus SEMUA sesi + reload → admin
+  // ter-logout padahal tokennya masih sah.
+  it('getAppData kandidat mode with ADMIN token → no sessionInvalid', async () => {
+    const result = await handleAction('getAppData', ['kandidat', '6281234567890'], adminToken, {
+      ip: '1.2.3.4',
+    });
+    expect(result).toBeDefined();
+    expect(result.sessionInvalid).not.toBe(true);
+  });
+
+  // Token refresh TIDAK boleh dianggap sesi sah (harus tetap sessionInvalid).
+  it('getAppData kandidat mode with REFRESH admin token → sessionInvalid', async () => {
+    const result = await handleAction('getAppData', ['kandidat', '6281234567890'], refreshAdminToken, {
+      ip: '1.2.3.4',
+    });
+    expect(result).toBeDefined();
+    expect(result.sessionInvalid).toBe(true);
+  });
+
   // --- rate limiting: rapid fire login attempts ---
   it('rate limit: 6th login attempt within 1 minute → rate limited', async () => {
     const ip = 'rate-test-ip';

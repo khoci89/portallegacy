@@ -33,10 +33,13 @@ User chat di ai_form.html
   → Netlify Function: ai-chat.ts → handleProcessAIChat()
   → Gemini generate (system prompt + history)
   → AI returns { reply, data: { identitas, wawancara, ... } }
-  → autoTranslateMissingJp(aiData) — translate _id → _jp
-  → autoTranslateMissingJp(p.currentData) — translate dari DB data juga
+  → Prefill deterministik: nilai dropdown (riwayat_jepang) → kanji eksak registry
+  → autoTranslateMissingJp(p.currentData, forcePaths, aiData) — SATU panggilan
+    Gemini untuk semua field _jp yang kosong ATAU yang _jp-nya diubah model
+  → snapAiDataToRegistry (sebelum guard) → guard _id dipulihkan dari currentData
   → Return { reply, data } ke frontend
-  → Frontend merge: latestCandidateData = { ...latestCandidateData, ...data }
+  → Frontend: setLatestCandidateData(merged) → updateFormUI() → saveToLocal()
+    (WAJIB lewat setter; `deps.latestCandidateData = ...` tidak menyentuh modul)
   → Form terisi otomatis
 ```
 
@@ -308,7 +311,14 @@ riminator): 'ai_form' / 'interview' / 'ttd' / 'esign' |
 | Rencana Pulang | rencana_pulang_id / rencana_pulang_jp | rencana_setelah_pulang / rencana_setelah_pulang_jp |
 | Keahlian | keahlian_id / keahlian_jp | keahlian_khusus / keahlian_khusus_jp |
 
-**Solusi:** AI_ID_JP_PAIRS sekarang punya 24 pairs (termasuk aliases). SUDAH DIFIX.
+**Solusi:** SATU registry — `netlify/functions/_lib/ai/jp-fields.ts`
+(`JP_FIELD_PAIRS` = **25** pasangan nested, termasuk alias di tabel atas;
+`ARRAY_FIELD_PAIRS` = 6 pasangan array). `chat.ts` meng-import-nya sebagai
+`AI_ID_JP_PAIRS` (alias lokal), dan `actions-master.ts` menurunkan
+`JP_TRANSLATE_MAP` dari `formKey`/`jpCol` — dua konsumen tidak bisa drift lagi.
+Jangan tambah pasangan di `chat.ts`/`actions-master.ts`; tambahkan di registry.
+Ada unit test yang mengunci bentuk registry: `netlify/functions/_lib/ai/jp-fields.test.ts`.
+SUDAH DIFIX.
 
 ---
 
@@ -318,7 +328,7 @@ riminator): 'ai_form' / 'interview' / 'ttd' / 'esign' |
 |---------|---------|----------------|------|------------|
 | AI CV Chat | AI CV Submit | latestCandidateData (localStorage) | Medium | Chat merge hati-hati |
 | AI CV Submit | Wawancara Simpan | ai_form_submissions | Low | Discriminator submitted_via |
-| AI CV Chat | AutoTranslate | AI_ID_JP_PAIRS | HIGH | Key name mismatch (SELESAI DIFIX) |
+| AI CV Chat | AutoTranslate | JP_FIELD_PAIRS (jp-fields.ts) | HIGH | Key name mismatch (SELESAI DIFIX — satu registry + test) |
 
 ---
 
@@ -332,7 +342,10 @@ Semua kolom yang dibutuhkan AI sudah ada di Supabase.
 
 ## Checklist: Sebelum Update Fitur AI
 
-- Cek AI_ID_JP_PAIRS - apakah ada key baru?
+- Cek `JP_FIELD_PAIRS` di `netlify/functions/_lib/ai/jp-fields.ts` — ada key baru?
+  (JANGAN tambah pasangan di `chat.ts`/`actions-master.ts` — registry itu satu-satunya sumber.
+  Field yang hidup hanya di `ai_data_json` cukup tanpa `formKey`/`jpCol`, contoh `riwayat_jepang`.)
+- Cek `RIWAYAT_JEPANG_PAIRS`/`KELUARGA_PAIRS` dll di `shared/silsilah.ts` — nilai dropdown baru?
 - Cek AI_FORM_DATA_INSTRUCTION - apakah AI instructions match?
 - Cek buildMasterNested - apakah key output match?
 - Cek submitted_via - apakah value unik?

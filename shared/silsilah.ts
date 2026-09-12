@@ -117,6 +117,16 @@ export const GENDER_PAIRS: Array<[string, string]> = [
   ['PEREMPUAN', '女性'],
 ];
 
+// Riwayat keberangkatan ke Jepang (dropdown "Pernah ke Jepang sebelumnya?").
+// SATU sumber untuk frontend (dropdown ai_form) & backend (snap balasan AI +
+// isi riwayat_jepang_jp eksak). Nilai bebas di luar daftar ini tetap boleh
+// masuk — pemanggil menerjemahkannya lewat Gemini.
+export const RIWAYAT_JEPANG_PAIRS: Array<[string, string]> = [
+  ['BELUM PERNAH', '未経験'],
+  ['PERNAH MAGANG', '技能実習経験'],
+  ['PERNAH TOKUTEI GINO', '特定技能経験'],
+];
+
 // --- Pencarian pasangan (toleran format: case, spasi, hubung) ----------------
 function normId(v: string): string {
   return String(v || '')

@@ -162,6 +162,7 @@ import {
   PEKERJAAN_PAIRS,
   JABATAN_PAIRS,
   KENALAN_PAIRS,
+  RIWAYAT_JEPANG_PAIRS,
   pairJpOf,
   pairIdOf,
 } from '../../shared/silsilah.ts';
@@ -197,11 +198,6 @@ const IDENTITAS_PAIRS = {
     ['KANAN', '右手'],
     ['KIRI', '左手'],
   ],
-  riwayat_jepang: [
-    ['BELUM PERNAH', '未経験'],
-    ['PERNAH MAGANG', '技能実習経験'],
-    ['PERNAH TOKUTEI GINO', '特定技能経験'],
-  ],
   medis_boolean: [
     ['TIDAK ADA', '無し'],
     ['ADA (MINOR)', '軽微あり'],
@@ -219,7 +215,7 @@ const FIELD_PAIRS: Record<string, Array<any>> = {
   'identitas.golongan_darah': IDENTITAS_PAIRS.golongan_darah,
   'identitas.status_nikah': IDENTITAS_PAIRS.status_nikah,
   'fisik.tangan_dominan': IDENTITAS_PAIRS.tangan_dominan,
-  'wawancara.riwayat_jepang': IDENTITAS_PAIRS.riwayat_jepang,
+  'wawancara.riwayat_jepang': RIWAYAT_JEPANG_PAIRS,
   'fisik.tahan_ac': IDENTITAS_PAIRS.ya_tidak,
   'medis.kacamata': IDENTITAS_PAIRS.ya_tidak,
   'medis.buta_warna': IDENTITAS_PAIRS.ya_tidak,
@@ -286,8 +282,8 @@ const PAIRED_PARS: Record<string, Array<any>> = {
   'identitas.agama_jp': IDENTITAS_PAIRS.agama,
   'identitas.status_nikah': IDENTITAS_PAIRS.status_nikah,
   'identitas.status_nikah_jp': IDENTITAS_PAIRS.status_nikah,
-  'wawancara.riwayat_jepang': IDENTITAS_PAIRS.riwayat_jepang,
-  'wawancara.riwayat_jepang_jp': IDENTITAS_PAIRS.riwayat_jepang,
+  'wawancara.riwayat_jepang': RIWAYAT_JEPANG_PAIRS,
+  'wawancara.riwayat_jepang_jp': RIWAYAT_JEPANG_PAIRS,
   'kenalan_jepang.hubungan_id': KENALAN_PAIRS,
   'kenalan_jepang.hubungan_jp': KENALAN_PAIRS,
   'kenalan_jepang.pekerjaan_id': PEKERJAAN_PAIRS,
@@ -433,6 +429,9 @@ function getChatDeps(): ChatDeps {
     saveToLocal: saveToLocal,
     mergeCandidateData: mergeCandidateData,
     updateFormUI: updateFormUI,
+    setLatestCandidateData: function (d) {
+      latestCandidateData = d;
+    },
   };
 }
 
@@ -783,6 +782,18 @@ function verifikasiAksesAiCv(targetWa) {
   if (localStorage.getItem('asj_kandidat_login') !== 'sukses') {
     return Promise.resolve(true);
   }
+  // HANYA panggil getAppData('kandidat') kalau token yang benar-benar
+  // terkirim MEMANG token kandidat. api-client memilih token admin lebih dulu
+  // saat admin_login='sukses' (lihat blok CANDIDATE_ACTIONS di api-client.ts)
+  // — mengirim token admin ke request ber-role kandidat = request pasti
+  // ditolak, dan di versi lama penolakan itu memicu penghapusan SEMUA sesi +
+  // reload (admin ikut ter-logout). Server kini mentoleransi admin di mode
+  // kandidat (lihat handleGetAppData → isAdminView), tapi guard ini tidak
+  // boleh bergantung pada perilaku itu: kalau token yang ada bukan token
+  // kandidat, tidak ada gunanya bertanya — dan berisiko.
+  if (!localStorage.getItem('asj_kandidat_session')) {
+    return Promise.resolve(true);
+  }
   return window
     .callAPI('getAppData', ['kandidat', targetWa])
     .then(function (res) {
@@ -1118,6 +1129,20 @@ function setValue(id, val) {
     if (iso) nextValue = iso;
   }
   if (el.value === nextValue) return;
+  // JANGAN TIMPA FIELD YANG SEDANG DIKETIK (bug "ketik 1 huruf, kolom sebelah
+  // mental"). updateFormUI() menulis ULANG semua field dari `latestCandidateData`.
+  // Handler `input` memang mem-persist tiap ketikan ke state, TAPI ada jeda
+  // nyata antara ketikan terakhir dan tulisan state berikutnya (debounce/
+  // deferred flush & saveToLocal async). Kalau updateFormUI() jalan di jeda itu
+  // — dipicu balasan AI, toggle bahasa, autoPairFill, addArrayItem, atau
+  // auto-save — nilai DOM yang lebih baru akan ditimpa balik ke versi state
+  // yang lebih lama. Yang dilihat pengguna: teks yang barusan ia ketik HILANG /
+  // "mental" saat kursor masih di kolom itu.
+  //
+  // Aturan: field yang sedang FOKUS adalah sumber kebenaran untuk dirinya
+  // sendiri selama pengguna mengetik. Lewati penulisan; nilainya sudah/akan
+  // di-persist oleh handler `input`, jadi tidak ada data yang hilang.
+  if (document.activeElement === el) return;
   el.value = nextValue;
   el.classList.add('border-amber-500', 'bg-amber-900/30');
   setTimeout(function () {
@@ -1224,6 +1249,17 @@ function updateArrayCard(type, index) {
   const items = Array.isArray(latestCandidateData[type]) ? latestCandidateData[type] : [];
   const card = container.querySelector('[data-idx="' + index + '"]');
   if (!card || !items[index]) return;
+  // JANGAN ganti innerHTML kalau pengguna sedang mengetik di kartu ini.
+  // fungsi ini dipanggil dari `oninput` (updateArrayField) TEPAT SAAT mengetik:
+  // mengganti grid.innerHTML menghancurkan elemen yang sedang fokus → kursor
+  // hilang, teks yang belum ter-render ulang "mental", dan pengguna harus klik
+  // lagi tiap 1 huruf. Data sudah tersimpan di state sebelum baris ini, jadi
+  // melewati render hanya menunda tampilan (bukan kehilangan data) — dan
+  // flushDeferredArrayRender akan menyusul saat blur/change.
+  if (card.contains(document.activeElement)) {
+    DEFERRED_RENDER[type] = true;
+    return;
+  }
   const fields = arrayFields[type];
   const inputs = fields
     .map(function (definition) {
