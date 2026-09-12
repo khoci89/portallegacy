@@ -310,9 +310,29 @@ function requireRole(sessionToken, role) {
   const t = session.verifyToken(sessionToken);
   // Token kind 'refresh' HANYA sah untuk action refresh (refreshAdminSession /
   // refreshKandidatSession) — tidak boleh dipakai sebagai sesi aksi lain.
-  if (!t || t.role !== role || t.kind === 'refresh') {
+  // Sama seperti token kosong/tak sah: sesi memang mati → sessionInvalid sah.
+  if (!t || t.kind === 'refresh') {
     return {
       error: { success: false, sessionInvalid: true, message: 'Sesi ' + role + ' tidak valid' },
+    };
+  }
+  // FIX 2026-09-12 — AKAR BUG "admin ter-logout setelah benerin CV kandidat".
+  //
+  // Token SAH tapi role-nya beda BUKAN "sesi mati". Dulu cabang ini ikut
+  // membalas sessionInvalid:true; api-client menafsirkan sessionInvalid sebagai
+  // "sesi habis" lalu MENGHAPUS SEMUA SESI (admin + kandidat) dan reload.
+  // Akibatnya satu action ber-role kandidat yang dipanggil dengan token admin
+  // — hal yang normal terjadi karena panel admin dan AI CV berbagi satu tab
+  // (localStorage sama) — sudah cukup untuk membunuh sesi admin yang masih
+  // hidup & belum kedaluwarsa.
+  //
+  // Sekarang cukup tolak aksinya; sesi pemanggil dibiarkan utuh.
+  if (t.role !== role) {
+    return {
+      error: {
+        success: false,
+        message: 'Akses ditolak: action ini membutuhkan sesi ' + role + '.',
+      },
     };
   }
   return { token: t };

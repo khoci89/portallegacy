@@ -949,12 +949,18 @@ async function handleSimpanBerkasTahapan(payload, sessionToken) {
 
 // simpanRevisiKandidat([wa, fileData]) — kandidat upload CV revisi.
 async function handleSimpanRevisiKandidat(payload, sessionToken) {
-  const guard = requireRole(sessionToken, 'kandidat');
-  if (guard.error) return guard.error;
+  // FIX 2026-09-12: dulu `requireRole(sessionToken, 'kandidat')` — token ADMIN
+  // yang memanggil action ini dibalas sessionInvalid:true sehingga api-client
+  // menghapus SEMUA sesi + reload (admin ikut ter-logout). Admin berwenang
+  // mengunggah revisi untuk kandidat mana pun; kandidat tetap dikunci ke WA-nya.
+  const t = session.verifyToken(sessionToken);
+  if (!t || t.kind === 'refresh' || (t.role !== 'admin' && t.role !== 'kandidat')) {
+    return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+  }
   const wa = String((payload && payload[0]) || '');
   // SECURITY (audit 2026-09-07): WA payload harus sama dengan WA sesi —
   // dulu kandidat mana pun bisa menimpa file_cv kandidat lain via payload.
-  if (normalizeWa(wa) !== normalizeWa(String(guard.token.wa || ''))) {
+  if (t.role === 'kandidat' && normalizeWa(wa) !== normalizeWa(String(t.wa || ''))) {
     return { success: false, error: 'Nomor WA tidak sesuai sesi.' };
   }
   cacheClear(); // revisi kandidat → buang cache dedupe

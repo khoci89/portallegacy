@@ -189,6 +189,51 @@ describe('handleAction — dispatch level integration', () => {
     expect(result.sessionInvalid).toBe(true);
   });
 
+  // --- getMasterDataByWa: token ADMIN → JANGAN sessionInvalid ---
+  //
+  // REGRESI (2026-09-12, keluhan "di kantor admin tetap ter-logout setelah
+  // benerin CV AI siswa"):
+  // admin → AI CV kandidat non-VIP → ai_form mengalihkan ke
+  // master-full.html?wa=… → master-full memanggil getMasterDataByWa dengan
+  // token ADMIN (api-client memang mengirim token admin untuk action kandidat
+  // saat admin_login='sukses'). Dulu handler memakai
+  // requireRole(token,'kandidat') → sessionInvalid:true → api-client
+  // menghapus SEMUA sesi + reload. Test ini gagal di kode lama.
+  it('getMasterDataByWa with ADMIN token → no sessionInvalid', async () => {
+    const result = await handleAction('getMasterDataByWa', ['6281234567890'], adminToken, {
+      ip: '1.2.3.4',
+    });
+    expect(result).toBeDefined();
+    expect(result.sessionInvalid).not.toBe(true);
+  });
+
+  it('getMasterDataByWa without session → sessionInvalid', async () => {
+    const result = await handleAction('getMasterDataByWa', ['6281234567890'], null, {
+      ip: '1.2.3.4',
+    });
+    expect(result).toBeDefined();
+    expect(result.sessionInvalid).toBe(true);
+  });
+
+  // --- requireRole: role mismatch ≠ sesi mati ---
+  //
+  // Token kandidat yang dipakai ke action admin harus DITOLAK, tapi TIDAK
+  // boleh ditandai sessionInvalid — kalau ditandai, sesi kandidat yang masih
+  // hidup ikut dihapus api-client (persis mekanisme admin ter-logout).
+  it('reviewForm with CANDIDATE token → ditolak tanpa sessionInvalid', async () => {
+    const result = await handleAction('reviewForm', ['form-1'], candidateToken, { ip: '1.2.3.4' });
+    expect(result.success).toBe(false);
+    expect(result.sessionInvalid).not.toBe(true);
+  });
+
+  it('reviewForm with REFRESH token → tetap sessionInvalid', async () => {
+    const result = await handleAction('reviewForm', ['form-1'], refreshAdminToken, {
+      ip: '1.2.3.4',
+    });
+    expect(result.success).toBe(false);
+    expect(result.sessionInvalid).toBe(true);
+  });
+
   // --- rate limiting: rapid fire login attempts ---
   it('rate limit: 6th login attempt within 1 minute → rate limited', async () => {
     const ip = 'rate-test-ip';

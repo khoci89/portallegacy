@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { env } from './env';
 
 // =============================================================================
 // fcm-server.js — Helper untuk mengirim Push Notification via FCM HTTP v1 API
@@ -7,6 +8,11 @@ import crypto from 'crypto';
 // Cache token untuk performa
 let _oauthToken = null;
 let _tokenExpiry = 0;
+
+// Peringatan sekali saja: kalau FIREBASE_SERVICE_ACCOUNT kosong, SEMUA push
+// gagal tanpa jejak di log — dulu ini bikin "notif tidak keluar" sangat sulit
+// dilacak (fungsi hanya return false tanpa pesan apa pun).
+let _warnedNoServiceAccount = false;
 
 /**
  * Membuat JWT untuk menukar OAuth2 token dari Google API (tanpa dependency luar).
@@ -79,8 +85,20 @@ function getGoogleAuthToken(serviceAccount) {
  * @param {string} url - URL tujuan saat notifikasi di-klik (opsional)
  */
 async function sendPushNotification(token, title, body, url = '/') {
-  const envRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!envRaw) return false;
+  // Lewat helper env() supaya ikut membaca fallback .env.local / Netlify env
+  // seperti secret lain (dulu process.env langsung → tidak pernah terbaca bila
+  // key dipasang lewat Keys UI / .env.local).
+  const envRaw = env('FIREBASE_SERVICE_ACCOUNT');
+  if (!envRaw) {
+    if (!_warnedNoServiceAccount) {
+      _warnedNoServiceAccount = true;
+      console.error(
+        '[FCM] FIREBASE_SERVICE_ACCOUNT kosong — semua push notification di-skip. ' +
+          'Set env ini (JSON service account Firebase) di Netlify Environment Variables.',
+      );
+    }
+    return false;
+  }
 
   let serviceAccount;
   try {

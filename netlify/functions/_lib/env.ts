@@ -32,6 +32,10 @@ const WHITELIST = new Set([
   'ASJ_ADMINS',
   'SENTRY_DSN',
   'FIREBASE_SERVICE_ACCOUNT',
+  // Nama yang BENAR-BENAR dipasang di Netlify (site asjportal). Lihat
+  // ENV_KEY_ALIASES di bawah: kode membaca FIREBASE_SERVICE_ACCOUNT, tapi
+  // dashboard berisi FIREBASE_SERVICE_TOKEN → dulu env kosong → semua push mati.
+  'FIREBASE_SERVICE_TOKEN',
 ]);
 
 // Nama scope pada tabel env Netlify yang ditempel. Nilai pada baris scope ini
@@ -69,6 +73,35 @@ const ALIASES = {
   ADMIN_PIN: 'ADMIN_MASTER_PIN',
   SESSION_KEY: 'SESSION_SECRET',
   ASJ_ADMIN: 'ASJ_ADMINS',
+  FIREBASE_SERVICE_TOKEN: 'FIREBASE_SERVICE_ACCOUNT',
+  FIREBASE_SERVICE_ACCOUNT_JSON: 'FIREBASE_SERVICE_ACCOUNT',
+  FIREBASE_CREDENTIALS: 'FIREBASE_SERVICE_ACCOUNT',
+  FIREBASE_ADMIN_KEY: 'FIREBASE_SERVICE_ACCOUNT',
+  GOOGLE_SERVICE_ACCOUNT: 'FIREBASE_SERVICE_ACCOUNT',
+};
+
+// ---------------------------------------------------------------------------
+// Alias saat RUNTIME (process.env), bukan hanya saat membaca .env.local.
+//
+// Bug nyata (2026-09-12, terverifikasi lewat Netlify API): service account
+// Firebase dipasang di Netlify dengan nama **FIREBASE_SERVICE_TOKEN**
+// (JSON valid 2372 char, project khoci-7a81c), sedangkan kode membaca
+// **FIREBASE_SERVICE_ACCOUNT**. Akibatnya `env('FIREBASE_SERVICE_ACCOUNT')`
+// selalu kosong → `sendPushNotification()` return false → SEMUA push
+// notification (biodata, lamaran baru, berkas, ubah status, reminder agenda)
+// mati total tanpa satu pun error di log.
+//
+// Alias di bawah membuat nama mana pun tetap terbaca, jadi salah nama env
+// tidak lagi mematikan seluruh notifikasi.
+// ---------------------------------------------------------------------------
+const ENV_KEY_ALIASES: Record<string, string[]> = {
+  FIREBASE_SERVICE_ACCOUNT: [
+    'FIREBASE_SERVICE_TOKEN',
+    'FIREBASE_SERVICE_ACCOUNT_JSON',
+    'FIREBASE_CREDENTIALS',
+    'FIREBASE_ADMIN_KEY',
+    'GOOGLE_SERVICE_ACCOUNT',
+  ],
 };
 
 // Parse satu baris env: dukung format "KEY=value" DAN format tabel
@@ -134,10 +167,20 @@ function loadFileEnv() {
 }
 
 function env(key) {
-  const v =
-    process.env[key] !== undefined && process.env[key] !== ''
-      ? process.env[key]
-      : loadFileEnv()[key] || '';
+  // 1) Nama baku di process.env (Netlify production / Freebuff Keys UI).
+  let v = process.env[key];
+  // 2) Alias nama (mis. FIREBASE_SERVICE_TOKEN untuk FIREBASE_SERVICE_ACCOUNT).
+  if (v === undefined || v === '') {
+    for (const alt of ENV_KEY_ALIASES[key] || []) {
+      const av = process.env[alt];
+      if (av !== undefined && av !== '') {
+        v = av;
+        break;
+      }
+    }
+  }
+  // 3) Fallback .env.local (hanya untuk preview sandbox).
+  if (v === undefined || v === '') v = loadFileEnv()[key] || '';
   // NETLIFY_SITE_URL kadang tercemar baris paste tabel env Netlify (multi-
   // baris berisi variabel lain) — ambil hanya URL valid pertama.
   if (key === 'NETLIFY_SITE_URL') {

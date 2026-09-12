@@ -63,10 +63,15 @@ async function handleFormStatus(formIdOrRowIndex, status, reason) {
           body = 'Selamat! Lamaran Anda telah disetujui. Cek dashboard untuk langkah selanjutnya.';
         }
         if (title) {
-          const { rows: tokens } = await supabaseJson('GET', 'fcm_tokens', {
+          // FIX 2026-09-12: supabaseJson mengembalikan ARRAY mentah, bukan
+          // { rows }. Destructuring `.rows` selalu menghasilkan undefined →
+          // `Array.isArray(tokens)` false → push ke kandidat TIDAK PERNAH
+          // terkirim (status LULUS/GAGAL/REVIEW ADMIN).
+          const tokenRows = await supabaseJson('GET', 'fcm_tokens', {
             query: { select: 'token', wa: 'eq.' + waNotify, limit: 10 },
           });
-          if (Array.isArray(tokens) && tokens.length > 0) {
+          const tokens = Array.isArray(tokenRows) ? tokenRows : [];
+          if (tokens.length > 0) {
             const tokenList = tokens.map((t) => t.token).filter(Boolean);
             if (tokenList.length > 0) {
               await fcm.sendMulticast(tokenList, title, body, '/');
@@ -319,6 +324,27 @@ function appendFeedback(prev, entry) {
 // berubah, supaya admin tidak bingung "email baru, tapi apa yang di-update?".
 async function syncBiodataKeMail(wa, nama, labels) {
   const want = normalizeWa(wa);
+  const labelList = Array.isArray(labels) ? labels : [];
+
+  // A. Push Notification ke Admin — dijalankan LEBIH DULU dan TANPA syarat
+  // baris mail.
+  // FIX 2026-09-12: dulu blok ini berada SETELAH `if (!mine.length) return;`,
+  // sehingga kandidat yang belum punya lamaran di database_asj_form (belum
+  // apply / belum upload dokumen apa pun) bisa update biodata tanpa memicu
+  // notifikasi apa pun ke admin. Admin hanya tahu setelah membuka Mail Inbox.
+  if (labelList.length > 0) {
+    try {
+      const { notifyAdmins } = await import('./fcm-helpers');
+      const notifyTitle = 'Biodata Lengkap (CV) Diperbarui';
+      const notifyBody = `Kandidat ${nama} (${wa}) memperbarui data: ${labelList.join(', ')}.`;
+      await notifyAdmins(notifyTitle, notifyBody, '/admin.html');
+    } catch (e) {
+      // Abaikan error push notif — jangan gagalkan simpan biodata
+    }
+  }
+
+  // B. Tandai baris mail kandidat (kalau memang sudah ada lamaran) supaya admin
+  // melihat badge UPDATE + catatan "[BIODATA] … diubah".
   // Jalur cepat: tarik hanya lamaran WA ini, bukan scan 500 baris inbox.
   let rows = await findFormsByWa(wa);
   if (rows === undefined) rows = await findForms();
@@ -332,7 +358,7 @@ async function syncBiodataKeMail(wa, nama, labels) {
     const entry =
       (isUpdate ? '[[PREV:' + String(r.status || '').toUpperCase() + ']] ' : '') +
       '[BIODATA] ' +
-      (labels.length ? labels.join(', ') : 'data diperbarui');
+      (labelList.length ? labelList.join(', ') : 'data diperbarui');
     const body = {
       timestamp: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -345,18 +371,6 @@ async function syncBiodataKeMail(wa, nama, labels) {
       body,
       headers: { Prefer: 'return=minimal' },
     });
-  }
-
-  // D. Kirim Push Notification ke Admin setiap kali biodata diupdate
-  if (labels && labels.length > 0) {
-    try {
-      const { notifyAdmins } = await import('./fcm-helpers');
-      const notifyTitle = 'Biodata Lengkap (CV) Diperbarui';
-      const notifyBody = `Kandidat ${nama} (${wa}) memperbarui data: ${labels.join(', ')}.`;
-      await notifyAdmins(notifyTitle, notifyBody, '/admin.html');
-    } catch (e) {
-      // Abaikan error push notif
-    }
   }
 }
 

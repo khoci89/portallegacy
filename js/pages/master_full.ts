@@ -125,6 +125,22 @@ export function toggleImaMade(i) {
 function getCandidateSession() {
   return localStorage.getItem('asj_kandidat_session') || '';
 }
+// FIX 2026-09-12 — admin yang membuka Form Master kandidat dari panel admin
+// TIDAK punya sesi kandidat di perangkat itu. Backend sudah menerima token
+// admin (handleGetMasterDataByWa / handleSubmitMasterForm), jadi gerbang
+// kandidat di sini harus ikut menerima admin. Dulu tidak: admin melihat layar
+// "login kandidat" / form kosong padahal sesi admin-nya masih sah — gejalanya
+// terbaca sebagai "sesi ilang / kosong" setelah benerin CV AI siswa.
+function isAdminSession() {
+  try {
+    return (
+      localStorage.getItem('asj_admin_login') === 'sukses' &&
+      !!localStorage.getItem('asj_admin_session')
+    );
+  } catch (e) {
+    return false;
+  }
+}
 function showLoginGate(msg) {
   let gwa = document.getElementById('gate-wa');
   if (gwa) gwa.textContent = getEl('wa').value || '';
@@ -379,7 +395,9 @@ window.onload = function () {
     }
     // Keamanan: wajib session kandidat asli (login dulu) - nomor WA dari
     // URL/QR saja tidak cukup untuk membaca data pribadi kandidat.
-    if (!getCandidateSession()) {
+    // Kecuali ADMIN (lihat isAdminSession) — admin berwenang membuka Form
+    // Master kandidat mana pun; backend memvalidasi token admin.
+    if (!getCandidateSession() && !isAdminSession()) {
       showLoginGate(window.tr('form.mf_gate_desc'));
       return;
     }
@@ -390,7 +408,7 @@ window.onload = function () {
       .callAPI('getMasterDataByWa', [waVal])
       .then((data) => {
         if (loadingBox) loadingBox.classList.add('hidden');
-        if (data && data.sessionInvalid) {
+        if (data && data.sessionInvalid && !isAdminSession()) {
           showLoginGate(window.tr('form.mf_sesi_berakhir'));
           return;
         }
@@ -573,7 +591,7 @@ export function changeStep(dir) {
 
 export async function submitMaster(isDraft) {
   try {
-    if (!getCandidateSession()) {
+    if (!getCandidateSession() && !isAdminSession()) {
       showLoginGate(window.tr('form.mf_alert_login_dulu'));
       return;
     }
@@ -759,7 +777,10 @@ export async function submitMaster(isDraft) {
         if (loadingBox) getEl('loadingText').innerText = 'Menyimpan data...';
         const res = await window.callAPI('submitMasterForm', [payload]);
         if (loadingBox) loadingBox.classList.add('hidden');
-        if (res && res.sessionInvalid) { showLoginGate(window.tr('form.mf_sesi_simpan')); return; }
+        if (res && res.sessionInvalid && !isAdminSession()) {
+          showLoginGate(window.tr('form.mf_sesi_simpan'));
+          return;
+        }
         if (res.success) {
           let msg = isDraft ? window.tr('form.mf_alert_draft') : window.tr('form.mf_alert_final');
           if (res.translationSkipped) msg += window.tr('form.mf_alert_translate');

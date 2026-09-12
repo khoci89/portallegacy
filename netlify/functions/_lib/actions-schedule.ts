@@ -195,14 +195,18 @@ async function handleCheckAndSendAgendaReminders(payload, sessionToken) {
   let errors = 0;
   try {
     const now = Date.now();
-    const { rows: schedules } = await supabaseJson('GET', 'database_schedule', {
+    // FIX 2026-09-12: supabaseJson mengembalikan ARRAY mentah, bukan { rows }.
+    // Dulu `const { rows: schedules } = ...` selalu undefined → guard di bawah
+    // langsung return dan SELURUH reminder agenda tidak pernah terkirim.
+    const scheduleRows = await supabaseJson('GET', 'database_schedule', {
       query: {
         select: '*',
         status_jadwal: 'eq.AKTIF',
         limit: 100,
       },
     });
-    if (!Array.isArray(schedules) || schedules.length === 0) {
+    const schedules = Array.isArray(scheduleRows) ? scheduleRows : [];
+    if (schedules.length === 0) {
       return { success: true, sent: 0, checked: 0 };
     }
 
@@ -245,10 +249,14 @@ async function handleCheckAndSendAgendaReminders(payload, sessionToken) {
     const sendToWaList = async (waList, title, body) => {
       for (const wa of waList) {
         try {
-          const { rows: tokens } = await supabaseJson('GET', 'fcm_tokens', {
+          // FIX 2026-09-12: supabaseJson mengembalikan ARRAY mentah, bukan
+          // { rows } — destructuring `.rows` selalu undefined sehingga reminder
+          // agenda tidak pernah terkirim ke kandidat.
+          const tokenRows = await supabaseJson('GET', 'fcm_tokens', {
             query: { select: 'token', wa: 'eq.' + wa, limit: 5 },
           });
-          if (Array.isArray(tokens) && tokens.length > 0) {
+          const tokens = Array.isArray(tokenRows) ? tokenRows : [];
+          if (tokens.length > 0) {
             const tokenList = tokens.map((t) => t.token).filter(Boolean);
             if (tokenList.length > 0) {
               await fcm.sendMulticast(tokenList, title, body, '/');

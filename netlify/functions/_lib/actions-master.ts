@@ -8,7 +8,7 @@ import { normalizeWa, pick, supabaseJson, supabaseUpsert, toText } from './db/cl
 import { findCandidateByWaFiltered, findCandidates } from './db/candidates';
 import { fetchMasterByWa } from './db/master';
 import * as session from './session';
-import { requireRole, isOwnerOrAdmin } from './actions-auth';
+import { isOwnerOrAdmin } from './actions-auth';
 import { syncBiodataKeMail } from './actions-mail';
 import { nextCandidateId } from './candidate-helpers';
 import { cacheClear } from './cache';
@@ -695,8 +695,20 @@ function buildMasterNested(row) {
 // getMasterDataByWa([wa]) → bentuk flat UPPERCASE (format kontrak lama/legacy).
 async function handleGetMasterDataByWa(payload, sessionToken) {
   const wa = String((payload && payload[0]) || '');
-  const guard = requireRole(sessionToken, 'kandidat');
-  if (guard.error) return guard.error;
+  // FIX 2026-09-12: dulu `requireRole(sessionToken, 'kandidat')`. Token ADMIN
+  // yang memanggil action ini dibalas sessionInvalid:true → api-client
+  // menghapus SEMUA sesi + reload. Ini jalur nyata "admin ter-logout":
+  // panel admin membuka AI CV kandidat non-VIP di TAB YANG SAMA, ai_form
+  // mengalihkan ke master-full.html?wa=… (lihat ai_form.ts), master-full
+  // memanggil getMasterDataByWa dengan token admin → sesi admin dibunuh.
+  // Admin memang berwenang membuka Form Master kandidat mana pun.
+  const t = session.verifyToken(sessionToken);
+  if (!t || t.kind === 'refresh') {
+    return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+  }
+  if (t.role !== 'admin' && t.role !== 'kandidat') {
+    return { success: false, message: 'Akses ditolak.' };
+  }
   if (!wa) return { error: 'Nomor WA wajib diisi.' };
   try {
     const row = await findMasterByWa(wa);
@@ -1211,13 +1223,20 @@ async function handleSubmitMasterForm(payload, sessionToken) {
           headers: { Prefer: 'return=minimal' },
         });
       }
-      // C. Kirim ringkasan perubahan biodata ke mail inbox (badge UPDATE +
-      // catatan "[BIODATA] email & alamat diubah"). Non-fatal.
-      await syncBiodataKeMail(wa, nama, changedLabels);
-
-      // D. Push Notification ke Admin sekarang ditangani di dalam syncBiodataKeMail
     } catch (e) {
-      /* sinkronisasi opsional — jangan gagalkan simpan master */
+      /* sinkronisasi kandidat opsional — jangan gagalkan simpan master */
+    }
+
+    // C. Ringkasan perubahan biodata ke mail inbox (badge UPDATE + catatan
+    // "[BIODATA] email & alamat diubah") DAN push notification ke Admin.
+    // FIX 2026-09-12: dulu blok ini berada DI DALAM try/catch sinkronisasi
+    // kandidat di atas — kalau query/PATCH database_candidate melempar error,
+    // syncBiodataKeMail (termasuk push notif) ikut terlewat tanpa jejak.
+    // Sekarang dipisah supaya notifikasi tidak bergantung pada sync kandidat.
+    try {
+      await syncBiodataKeMail(wa, nama, changedLabels);
+    } catch (e) {
+      /* mail + push notif opsional — jangan gagalkan simpan master */
     }
 
     return { success: true, translationSkipped: Object.keys(jpTranslations).length === 0 };
